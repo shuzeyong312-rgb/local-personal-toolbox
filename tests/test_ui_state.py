@@ -10,13 +10,14 @@ from PIL import Image
 from PySide6.QtCore import QPoint, QPointF, QSettings, Qt
 from PySide6.QtGui import QWheelEvent
 from PySide6.QtTest import QTest
-from PySide6.QtWidgets import QApplication, QFileDialog, QPlainTextEdit, QPushButton, QSplitter
+from PySide6.QtWidgets import QApplication, QFileDialog, QSplitter, QWidget
 
 from app.main_window import MainWindow
 from app.theme import STYLE
 from components.controls import AppComboBox, AppSpinBox
-from components.dialogs import ResultDialog
+from components.dialogs import TaskDialog
 from tools.watermark.page import WatermarkPage
+from tools.resize.page import ResizePage
 
 
 class UiStateTests(unittest.TestCase):
@@ -34,6 +35,44 @@ class UiStateTests(unittest.TestCase):
 
     def setUp(self) -> None:
         QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "watermark").clear()
+        QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "resize").clear()
+
+    def test_resize_page_modes_preview_settings_and_locking(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            source = Path(name) / "product.png"
+            Image.new("RGB", (1600, 1200), "red").save(source)
+            page = ResizePage()
+            self.assertFalse(page.start_button.isEnabled())
+            page.add_files([source])
+            page.update_preview()
+            self.assertIn("预计输出 800 × 800", page.image_info.text())
+            page.mode.setCurrentIndex(page.mode.findData("width"))
+            self.assertTrue(page.width_field.isVisibleTo(page))
+            self.assertFalse(page.height_field.isVisibleTo(page))
+            page.mode.setCurrentIndex(page.mode.findData("height"))
+            self.assertFalse(page.width_field.isVisibleTo(page))
+            self.assertTrue(page.height_field.isVisibleTo(page))
+            page.mode.setCurrentIndex(page.mode.findData("fixed"))
+            page.fit_mode.setCurrentIndex(page.fit_mode.findData("contain"))
+            self.assertTrue(page.color_field.isVisibleTo(page))
+            page.fit_mode.setCurrentIndex(page.fit_mode.findData("cover"))
+            self.assertFalse(page.color_field.isVisibleTo(page))
+            before = page.width_input.value()
+            event = QWheelEvent(QPointF(5, 5), QPointF(5, 5), QPoint(), QPoint(0, 120), Qt.MouseButton.NoButton,
+                                Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.ScrollUpdate, False)
+            page.width_input.wheelEvent(event)
+            self.assertEqual(before, page.width_input.value())
+            page.width_input.setValue(1234)
+            restored = ResizePage()
+            self.assertEqual(1234, restored.width_input.value())
+            self.assertEqual([], restored.sources)
+            page._set_processing(True)
+            self.assertFalse(page.settings_card.isEnabled())
+            page.resize(860, 652)
+            page.show()
+            self.app.processEvents()
+            self.assertLessEqual(page.start_button.mapTo(page, page.start_button.rect().bottomLeft()).y(), page.height())
+            page.close()
 
     def test_start_button_and_single_remove_follow_file_state(self) -> None:
         with tempfile.TemporaryDirectory() as name:
@@ -87,14 +126,27 @@ class UiStateTests(unittest.TestCase):
         self.assertFalse(page.position.grab().isNull())
         self.assertGreaterEqual(page.opacity.minimumHeight(), 28)
 
-    def test_result_dialog_exposes_failures_and_actions(self) -> None:
-        dialog = ResultDialog(2, 1, Path("output"), ["bad.png: damaged"])
-        details = dialog.findChild(QPlainTextEdit, "failureDetails")
-        self.assertIsNotNone(details)
-        self.assertEqual("bad.png: damaged", details.toPlainText())
-        labels = [button.text() for button in dialog.findChildren(QPushButton)]
-        self.assertIn("关闭", labels)
-        self.assertIn("打开文件夹", labels)
+    def test_task_dialog_switches_from_progress_to_result(self) -> None:
+        dialog = TaskDialog(5, Path("output"))
+        self.assertTrue(dialog.isModal())
+        dialog.update_progress(3, 5, 2, 1)
+        self.assertEqual(3, dialog.progress.value())
+        self.assertEqual("已处理 3 / 总数 5", dialog.progress_count.text())
+        self.assertEqual((2, 1), (dialog.success, dialog.failed))
+        dialog.reject()
+        self.assertTrue(dialog.processing)
+
+        dialog.show_result(4, 1, ["bad.png: damaged"])
+        self.assertFalse(dialog.processing)
+        self.assertEqual("处理完成", dialog.windowTitle())
+        self.assertEqual("成功 4 张", dialog.success_label.text())
+        self.assertEqual("失败 1 张", dialog.failure_label.text())
+        self.assertEqual("output", dialog.output_name.text())
+        self.assertEqual("output", dialog.output_path.text())
+        self.assertEqual("bad.png: damaged", dialog.details.toPlainText())
+
+        dialog.show_result(5, 0, [])
+        self.assertTrue(dialog.failure_label.property("empty"))
 
     def test_tiling_only_shows_relevant_fields(self) -> None:
         page = WatermarkPage()
@@ -119,7 +171,7 @@ class UiStateTests(unittest.TestCase):
         self.assertTrue(page.preview.empty_state.isVisibleTo(page.preview))
         self.assertTrue(page.file_actions.isHidden())
         self.assertTrue(page.file_list.isHidden())
-        self.assertTrue(page.status_panel.isHidden())
+        self.assertIsNone(page.findChild(QWidget, "statusPanel"))
 
     def test_invalid_output_path_disables_processing(self) -> None:
         with tempfile.TemporaryDirectory() as name:
@@ -190,6 +242,19 @@ class UiStateTests(unittest.TestCase):
             self.assertEqual(WatermarkPage.DEFAULT_TEXT, page.text_input.text())
             self.assertEqual(WatermarkPage.DEFAULT_FONT_SIZE, page.font_size.value())
             self.assertEqual(name, page.output_edit.text())
+
+    def test_output_format_controls_and_settings(self) -> None:
+        page = WatermarkPage()
+        self.assertEqual("original", page.output_format.currentData())
+        self.assertFalse(page.quality_field.isVisibleTo(page))
+        page.output_format.setCurrentIndex(page.output_format.findData("jpg"))
+        self.assertTrue(page.quality_field.isVisibleTo(page))
+        self.assertTrue(page.jpg_notice.isVisibleTo(page))
+        page.quality.setValue(88)
+
+        restored = WatermarkPage()
+        self.assertEqual("jpg", restored.output_format.currentData())
+        self.assertEqual(88, restored.quality.value())
 
     def test_missing_previous_output_falls_back_without_crashing(self) -> None:
         with tempfile.TemporaryDirectory() as name:

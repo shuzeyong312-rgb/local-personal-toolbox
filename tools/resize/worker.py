@@ -2,27 +2,18 @@ from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
-from services.image_processing import WatermarkOptions, output_path, process_image
+from services.image_resize import ResizeOptions, process_resize, resize_output_path
 
 
-class WatermarkWorker(QThread):
+class ResizeWorker(QThread):
     progress = Signal(int, int, int, int)
     completed = Signal(int, int, list)
 
-    def __init__(
-        self,
-        sources: list[Path],
-        output_dir: Path,
-        options: WatermarkOptions,
-        output_format: str = "original",
-        quality: int = 95,
-    ) -> None:
+    def __init__(self, sources: list[Path], output_dir: Path, options: ResizeOptions) -> None:
         super().__init__()
         self.sources = sources
         self.output_dir = output_dir
         self.options = options
-        self.output_format = output_format
-        self.quality = quality
 
     def run(self) -> None:
         success = 0
@@ -32,8 +23,7 @@ class WatermarkWorker(QThread):
             if self.isInterruptionRequested():
                 return
             try:
-                destination = output_path(source, self.output_dir, self.output_format)
-                process_image(source, destination, self.options, self.output_format, self.quality)
+                process_resize(source, resize_output_path(source, self.output_dir), self.options)
                 success += 1
             except Exception as exc:
                 failures.append(f"{source.name}: {exc}")

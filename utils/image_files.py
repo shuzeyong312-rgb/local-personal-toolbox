@@ -1,6 +1,6 @@
 from pathlib import Path
 
-SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
+SUPPORTED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 
 
 def is_supported_image(path: Path) -> bool:

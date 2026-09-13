@@ -88,18 +88,23 @@ QLabel#preview[dropActive="true"] {{ background: #EFF6FF; border: 1px solid {PRI
 QWidget#previewEmpty {{ background: transparent; }}
 QLabel#emptyTitle {{ color: #344258; font-size: 14px; font-weight: 600; }}
 QLabel#emptyHint {{ color: {TEXT_DISABLED}; font-size: 12px; }}
-QDialog#baseDialog {{ background: {APP_BACKGROUND}; }}
-QLabel#dialogTitle {{ color: {TEXT_PRIMARY}; font-size: 18px; font-weight: 700; }}
-QLabel#resultSuccess {{ color: {SUCCESS}; font-size: 15px; font-weight: 600; }}
-QLabel#resultFailure {{ color: {DANGER}; font-size: 15px; font-weight: 600; }}
+QDialog#baseDialog {{ background: transparent; }}
+QWidget#dialogShell {{ background: {APP_BACKGROUND}; border: 1px solid {BORDER}; border-radius: {RADIUS_LG}px; }}
+QWidget#dialogContent {{ background: {SURFACE}; border: 0; border-bottom-left-radius: {RADIUS_LG}px; border-bottom-right-radius: {RADIUS_LG}px; }}
+QLabel#dialogTitle {{ color: {TEXT_PRIMARY}; font-size: 18px; font-weight: 700; background: transparent; }}
+QLabel#progressCount {{ color: #344258; font-size: 13px; font-weight: 600; }}
+QLabel#resultIcon {{ color: #237A57; background: #EAF7F0; border-radius: 16px; min-width: 32px; max-width: 32px; min-height: 32px; max-height: 32px; font-size: 17px; font-weight: 700; qproperty-alignment: AlignCenter; }}
+QLabel#resultSuccess {{ color: #315F4D; background: #F0F8F4; border-radius: 6px; padding: 7px 10px; font-size: 13px; font-weight: 600; }}
+QLabel#resultFailure {{ color: #A34A4A; background: #FFF4F4; border-radius: 6px; padding: 7px 10px; font-size: 13px; font-weight: 600; }}
+QLabel#resultFailure[empty="true"] {{ color: {TEXT_SECONDARY}; background: #F3F5F8; font-weight: 500; }}
+QWidget#outputSummary {{ background: #F8FAFC; border: 1px solid #E8EDF3; border-radius: {RADIUS_MD}px; }}
+QLabel#outputCaption {{ color: {TEXT_SECONDARY}; font-size: 11px; background: transparent; }}
+QLabel#outputName {{ color: #344258; font-size: 14px; font-weight: 600; background: transparent; }}
+QLabel#outputPath {{ color: {TEXT_DISABLED}; font-size: 11px; background: transparent; }}
 QPlainTextEdit#failureDetails {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: {RADIUS_MD}px; padding: 8px; }}
-QWidget#statusPanel {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 8px; }}
 QLabel#statusText {{ color: #536175; font-size: 12px; }}
 QLabel#fieldError {{ color: {DANGER}; font-size: 12px; }}
 QLabel#warningText {{ color: {WARNING}; font-size: 12px; }}
-QLabel#statusText[status="success"] {{ color: {SUCCESS}; font-weight: 600; }}
-QLabel#statusText[status="warning"] {{ color: {WARNING}; font-weight: 600; }}
-QLabel#statusText[status="danger"] {{ color: {DANGER}; font-weight: 600; }}
 QProgressBar {{ background: #E5EAF1; border: 0; border-radius: 4px; min-height: 8px; max-height: 8px; text-align: center; }}
 QProgressBar::chunk {{ background: {PRIMARY}; border-radius: 4px; }}
 QSplitter#workspaceSplitter::handle {{ background: transparent; width: 14px; }}

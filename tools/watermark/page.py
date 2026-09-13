@@ -15,7 +15,6 @@ from PySide6.QtWidgets import (
     QLineEdit,
     QListWidgetItem,
     QPushButton,
-    QProgressBar,
     QSplitter,
     QVBoxLayout,
     QWidget,
@@ -23,7 +22,7 @@ from PySide6.QtWidgets import (
 
 from app.icons import icon
 from components.controls import AppComboBox, AppSpinBox, NoWheelSlider, RecentTextComboBox
-from components.dialogs import ResultDialog
+from components.dialogs import TaskDialog
 from components.image_drop_list import ImageDropList
 from components.preview_label import PreviewLabel
 from services.image_processing import WatermarkOptions, render_watermark
@@ -71,6 +70,8 @@ class WatermarkPage(QWidget):
     DEFAULT_TILED = False
     DEFAULT_ANGLE = 30
     DEFAULT_SPACING = 80
+    DEFAULT_OUTPUT_FORMAT = "original"
+    DEFAULT_QUALITY = 95
 
     def __init__(self) -> None:
         super().__init__()
@@ -79,6 +80,7 @@ class WatermarkPage(QWidget):
         self.settings = QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "watermark")
         self._loading_settings = False
         self.worker: WatermarkWorker | None = None
+        self.task_dialog: TaskDialog | None = None
         self.preview_timer = QTimer(self)
         self.preview_timer.setInterval(120)
         self.preview_timer.setSingleShot(True)
@@ -111,9 +113,6 @@ class WatermarkPage(QWidget):
         splitter.setStretchFactor(1, 2)
         splitter.setSizes([640, 420])
         root.addWidget(splitter, 1)
-        self.status_panel = self._status_panel()
-        self.status_panel.hide()
-        root.addWidget(self.status_panel)
 
     @staticmethod
     def _card(title: str, action: QWidget | None = None) -> tuple[QWidget, QVBoxLayout]:
@@ -235,6 +234,25 @@ class WatermarkPage(QWidget):
         settings_layout.addWidget(self.tiled)
         settings_layout.addStretch()
 
+        self.output_format = AppComboBox()
+        for label, value in (("跟随原图", "original"), ("PNG", "png"), ("JPG", "jpg"), ("WebP", "webp")):
+            self.output_format.addItem(label, value)
+        self.quality = self._spin(1, 100, self.DEFAULT_QUALITY, "")
+        self.output_format_field = self._field_widget("输出格式", self.output_format)
+        self.quality_field = self._field_widget("图片质量", self.quality)
+        output_grid = QGridLayout()
+        output_grid.setContentsMargins(0, 0, 0, 0)
+        output_grid.setHorizontalSpacing(12)
+        output_grid.setColumnStretch(0, 1)
+        output_grid.setColumnStretch(1, 1)
+        output_grid.addWidget(self.output_format_field, 0, 0)
+        output_grid.addWidget(self.quality_field, 0, 1)
+        settings_layout.addLayout(output_grid)
+        self.jpg_notice = QLabel("JPG 不支持透明背景，透明区域将填充为白色。", objectName="warningText")
+        self.jpg_notice.setWordWrap(True)
+        settings_layout.addWidget(self.jpg_notice)
+        self.output_format.currentIndexChanged.connect(self._update_output_controls)
+
         self.output_edit = QLineEdit(str(self.output_dir))
         self.output_edit.hide()
         self.output_edit.setToolTip(str(self.output_dir))
@@ -257,6 +275,7 @@ class WatermarkPage(QWidget):
         container_layout.addWidget(self.settings_card, 1)
         self.output_edit.textChanged.connect(self._update_start_button)
         self._toggle_tiling(False)
+        self._update_output_controls()
         return container
 
     @staticmethod
@@ -274,28 +293,6 @@ class WatermarkPage(QWidget):
         field_layout.addWidget(QLabel(label, objectName="fieldLabel"))
         field_layout.addWidget(widget)
         return field
-
-    def _status_panel(self) -> QWidget:
-        panel = QWidget(objectName="statusPanel")
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(14, 10, 10, 10)
-        layout.setSpacing(8)
-        self.progress = QProgressBar()
-        self.progress.setRange(0, 1)
-        self.progress.setTextVisible(False)
-        layout.addWidget(self.progress)
-        row = QHBoxLayout()
-        self.progress_count = QLabel("0 / 0", objectName="statusText")
-        self.status = QLabel("就绪", objectName="statusText")
-        self.open_button = QPushButton("打开输出目录")
-        self.open_button.setEnabled(False)
-        self.open_button.clicked.connect(self.open_output)
-        row.addWidget(self.progress_count)
-        row.addStretch()
-        row.addWidget(self.status)
-        row.addWidget(self.open_button)
-        layout.addLayout(row)
-        return panel
 
     @staticmethod
     def _spin(minimum: int, maximum: int, value: int, suffix: str) -> AppSpinBox:
@@ -327,6 +324,8 @@ class WatermarkPage(QWidget):
             self.angle.valueChanged,
             self.spacing.valueChanged,
             self.output_edit.textChanged,
+            self.output_format.currentIndexChanged,
+            self.quality.valueChanged,
         ):
             signal.connect(self._save_settings)
 
@@ -363,6 +362,11 @@ class WatermarkPage(QWidget):
             self.tiled.setChecked(self._saved_value("tiled", self.DEFAULT_TILED, bool))
             self.angle.setValue(self._saved_int("angle", self.DEFAULT_ANGLE, -180, 180))
             self.spacing.setValue(self._saved_int("spacing", self.DEFAULT_SPACING, 0, 1000))
+            output_format = self._saved_value("output_format", self.DEFAULT_OUTPUT_FORMAT, str)
+            index = self.output_format.findData(output_format)
+            self.output_format.setCurrentIndex(index if index >= 0 else 0)
+            self.quality.setValue(self._saved_int("quality", self.DEFAULT_QUALITY, 1, 100))
+            self._update_output_controls()
 
             previous_output = self.settings.value("output_dir")
             if previous_output is not None and self._existing_output_dir(str(previous_output)):
@@ -400,6 +404,8 @@ class WatermarkPage(QWidget):
             "angle": self.angle.value(),
             "spacing": self.spacing.value(),
             "output_dir": self.output_edit.text().strip(),
+            "output_format": self.output_format.currentData(),
+            "quality": self.quality.value(),
         }
         for key, value in values.items():
             self.settings.setValue(key, value)
@@ -418,11 +424,18 @@ class WatermarkPage(QWidget):
             self.tiled.setChecked(self.DEFAULT_TILED)
             self.angle.setValue(self.DEFAULT_ANGLE)
             self.spacing.setValue(self.DEFAULT_SPACING)
+            self.output_format.setCurrentIndex(0)
+            self.quality.setValue(self.DEFAULT_QUALITY)
         finally:
             self._loading_settings = False
         self._toggle_tiling(False)
         self._save_settings()
         self.schedule_preview()
+
+    def _update_output_controls(self, *_args) -> None:
+        output_format = self.output_format.currentData()
+        self.quality_field.setVisible(output_format in {"jpg", "webp"})
+        self.jpg_notice.setVisible(output_format == "jpg")
 
     def _remember_current_text(self) -> None:
         text = self.text_input.text().strip()
@@ -460,7 +473,7 @@ class WatermarkPage(QWidget):
             self,
             "选择图片",
             self._source_dialog_dir(),
-            "图片 (*.jpg *.jpeg *.png *.webp)",
+            "图片 (*.jpg *.jpeg *.png *.webp *.gif)",
         )
         if names:
             self._remember_source_dir(Path(names[0]).parent)
@@ -626,6 +639,8 @@ class WatermarkPage(QWidget):
             self.preview.setText(f"预览失败：{exc}")
 
     def start_processing(self) -> None:
+        if self.worker and self.worker.isRunning():
+            return
         if not self._validate_output():
             self.output_edit.setFocus()
             return
@@ -634,65 +649,31 @@ class WatermarkPage(QWidget):
         self._remember_current_text()
         output = Path(self.output_edit.text().strip()).resolve()
         self.output_dir = output
-        self.progress.setRange(0, len(self.sources))
-        self.progress.setValue(0)
-        self.open_button.setEnabled(False)
-        self.status_panel.show()
-        self._set_status("处理中…")
-        self.progress_count.setText(f"0 / {len(self.sources)}")
-        self.worker = WatermarkWorker(self.sources.copy(), output, self.options())
+        self.task_dialog = TaskDialog(len(self.sources), output, self)
+        self.worker = WatermarkWorker(
+            self.sources.copy(), output, self.options(), self.output_format.currentData(), self.quality.value()
+        )
         self.worker.progress.connect(self._on_progress)
         self.worker.completed.connect(self._on_completed)
         self.worker.finished.connect(self._worker_finished)
         self._update_start_button()
-        self._set_inputs_enabled(False)
         self.worker.start()
+        self.task_dialog.open()
 
     def _on_progress(self, done: int, total: int, success: int, failed: int) -> None:
-        self.progress.setValue(done)
-        self.progress_count.setText(f"{done} / {total}")
-        self._set_status(f"处理中… 成功 {success} · 失败 {failed}")
+        if self.task_dialog:
+            self.task_dialog.update_progress(done, total, success, failed)
 
     def _on_completed(self, success: int, failed: int, failures: list[str]) -> None:
-        self.open_button.setEnabled(True)
-        if failed == 0:
-            self._set_status(f"✓ 处理完成 · 成功 {success} 张", "success")
-        elif success:
-            self._set_status(f"完成 · 成功 {success} · 失败 {failed}", "warning")
-        else:
-            self._set_status(f"处理失败 · 失败 {failed} 张", "danger")
-        ResultDialog(success, failed, self.output_dir, failures, self).exec()
-
-    def _set_status(self, text: str, status: str = "") -> None:
-        self.status.setText(text)
-        self.status.setProperty("status", status)
-        self.status.style().unpolish(self.status)
-        self.status.style().polish(self.status)
+        if self.task_dialog:
+            self.task_dialog.show_result(success, failed, failures)
 
     def _worker_finished(self) -> None:
+        if self.task_dialog and self.task_dialog.processing:
+            success = self.task_dialog.success
+            self.task_dialog.show_result(success, self.task_dialog.total - success, ["任务异常结束"], "处理完成")
         self.worker = None
-        self._set_inputs_enabled(True)
         self._update_start_button()
-
-    def _set_inputs_enabled(self, enabled: bool) -> None:
-        for widget in (
-            self.preview,
-            self.file_actions,
-            self.file_list,
-            self.text_input,
-            self.font_size,
-            self.opacity,
-            self.color_button,
-            self.position,
-            self.margin,
-            self.tiled,
-            self.angle,
-            self.spacing,
-            self.output_edit,
-            self.output_button,
-            self.reset_button,
-        ):
-            widget.setEnabled(enabled)
 
     def stop_worker(self) -> None:
         if self.worker and self.worker.isRunning():

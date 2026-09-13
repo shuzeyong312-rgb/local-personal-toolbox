@@ -7,6 +7,7 @@ from PIL import Image, ImageColor, ImageDraw, ImageFont
 
 JPEG_QUALITY = 95
 WEBP_QUALITY = 95
+OUTPUT_FORMATS = {"png": ("PNG", ".png"), "jpg": ("JPEG", ".jpg"), "webp": ("WEBP", ".webp")}
 
 
 @dataclass(frozen=True)
@@ -71,38 +72,68 @@ def render_watermark(image: Image.Image, options: WatermarkOptions) -> Image.Ima
     return Image.alpha_composite(base, overlay)
 
 
-def output_path(source: Path, output_dir: Path) -> Path:
-    candidate = output_dir / f"{source.stem}_watermarked{source.suffix.lower()}"
+def ensure_static(image: Image.Image) -> None:
+    if getattr(image, "is_animated", False):
+        raise ValueError("暂不支持动态图片水印。")
+
+
+def output_path(source: Path, output_dir: Path, output_format: str = "original") -> Path:
+    with Image.open(source) as image:
+        ensure_static(image)
+        actual_format = image.format
+    if output_format == "original":
+        suffix = source.suffix.lower()
+        if actual_format not in {"PNG", "JPEG", "WEBP"}:
+            raise ValueError("不支持的图片格式")
+        if suffix not in ({".jpg", ".jpeg"} if actual_format == "JPEG" else {f".{actual_format.lower()}"}):
+            suffix = OUTPUT_FORMATS["jpg" if actual_format == "JPEG" else actual_format.lower()][1]
+    else:
+        try:
+            _, suffix = OUTPUT_FORMATS[output_format]
+        except KeyError as exc:
+            raise ValueError("不支持的输出格式") from exc
+
+    name = source.name
+    while Path(name).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}:
+        name = Path(name).stem
+    candidate = output_dir / f"{name}_水印版{suffix}"
     index = 2
     while candidate.exists():
-        candidate = output_dir / f"{source.stem}_watermarked_{index}{source.suffix.lower()}"
+        candidate = output_dir / f"{name}_水印版_{index}{suffix}"
         index += 1
     return candidate
 
 
-def process_image(source: Path, destination: Path, options: WatermarkOptions) -> None:
+def process_image(
+    source: Path,
+    destination: Path,
+    options: WatermarkOptions,
+    output_format: str = "original",
+    quality: int = 95,
+) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     with Image.open(source) as original:
+        ensure_static(original)
         original.load()
         size = original.size
         exif = original.info.get("exif")
         icc = original.info.get("icc_profile")
         result = render_watermark(original, options)
-        suffix = source.suffix.lower()
+        selected_format = original.format if output_format == "original" else OUTPUT_FORMATS.get(output_format, (None,))[0]
+        if selected_format not in {"PNG", "JPEG", "WEBP"}:
+            raise ValueError("不支持的输出格式")
         save_options = {}
         if exif:
             save_options["exif"] = exif
         if icc:
             save_options["icc_profile"] = icc
-        if suffix in {".jpg", ".jpeg"}:
-            result = result.convert("RGB")
-            save_options.update(quality=JPEG_QUALITY, subsampling=0)
-            image_format = "JPEG"
-        elif suffix == ".webp":
-            save_options.update(quality=WEBP_QUALITY, method=6)
-            image_format = "WEBP"
-        else:
-            image_format = "PNG"
-        result.save(destination, format=image_format, **save_options)
+        if selected_format == "JPEG":
+            background = Image.new("RGB", result.size, "white")
+            background.paste(result, mask=result.getchannel("A"))
+            result = background
+            save_options.update(quality=quality, subsampling=0)
+        elif selected_format == "WEBP":
+            save_options.update(quality=quality, method=6)
+        result.save(destination, format=selected_format, **save_options)
         if result.size != size:
             raise RuntimeError("输出图片尺寸发生变化")
