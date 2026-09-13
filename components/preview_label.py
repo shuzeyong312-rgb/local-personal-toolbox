@@ -1,8 +1,8 @@
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPixmap
-from PySide6.QtWidgets import QLabel
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
 from app.icons import icon
 from utils.image_files import images_in_folder, is_supported_image
@@ -10,6 +10,8 @@ from utils.image_files import images_in_folder, is_supported_image
 
 class PreviewLabel(QLabel):
     filesDropped = Signal(list)
+    chooseFilesRequested = Signal()
+    chooseFolderRequested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -19,27 +21,38 @@ class PreviewLabel(QLabel):
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setMinimumSize(360, 380)
         self.setAcceptDrops(True)
+        self.empty_state = QWidget(self, objectName="previewEmpty")
+        empty_layout = QVBoxLayout(self.empty_state)
+        empty_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_layout.setSpacing(6)
+        image = QLabel()
+        image.setPixmap(icon("image", "#8A99AE", 32).pixmap(32, 32))
+        image.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        empty_layout.addWidget(image)
+        empty_layout.addWidget(QLabel("拖入图片，或点击添加", objectName="emptyTitle"), alignment=Qt.AlignmentFlag.AlignCenter)
+        empty_layout.addWidget(QLabel("支持 JPG、PNG、WEBP", objectName="emptyHint"), alignment=Qt.AlignmentFlag.AlignCenter)
+        empty_layout.addSpacing(8)
+        buttons = QHBoxLayout()
+        buttons.setSpacing(8)
+        add_files = QPushButton("添加图片", objectName="primary")
+        add_files.setIcon(icon("plus", "#FFFFFF"))
+        add_folder = QPushButton("添加文件夹")
+        add_folder.setIcon(icon("folder"))
+        add_files.clicked.connect(self.chooseFilesRequested)
+        add_folder.clicked.connect(self.chooseFolderRequested)
+        buttons.addWidget(add_files)
+        buttons.addWidget(add_folder)
+        empty_layout.addLayout(buttons)
 
     def show_pixmap(self, pixmap: QPixmap) -> None:
         self._pixmap = pixmap
+        self.empty_state.hide()
         self._rescale()
 
     def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
+        self.empty_state.setGeometry(self.contentsRect())
         self._rescale()
-
-    def paintEvent(self, event) -> None:
-        super().paintEvent(event)
-        if not self._pixmap.isNull():
-            return
-        painter = QPainter(self)
-        center = self.rect().center()
-        pixmap = icon("image", "#94A3B8", 30).pixmap(30, 30)
-        painter.drawPixmap(QPoint(center.x() - 15, center.y() - 48), pixmap)
-        painter.setPen(QColor("#475569"))
-        painter.drawText(self.rect().adjusted(0, 12, 0, 0), Qt.AlignmentFlag.AlignCenter, "选择或拖入图片")
-        painter.setPen(QColor("#94A3B8"))
-        painter.drawText(self.rect().adjusted(0, 54, 0, 0), Qt.AlignmentFlag.AlignCenter, "支持 JPG · PNG · WEBP")
 
     def dragEnterEvent(self, event) -> None:
         if event.mimeData().hasUrls():
@@ -73,5 +86,6 @@ class PreviewLabel(QLabel):
 
     def clear(self) -> None:
         self._pixmap = QPixmap()
+        self.empty_state.show()
         super().clear()
         self.update()

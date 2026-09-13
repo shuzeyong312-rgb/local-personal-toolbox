@@ -1,5 +1,5 @@
 Set shell = CreateObject("WScript.Shell")
-project = "C:\data\project"
+project = "C:\data\local-personal-toolbox"
 pythonw = project & "\.venv\Scripts\pythonw.exe"
 
 If CreateObject("Scripting.FileSystemObject").FileExists(pythonw) Then

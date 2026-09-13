@@ -1,5 +1,7 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QSize, Qt
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QWidget
+
+from app.icons import icon
 
 
 class TitleBar(QWidget):
@@ -13,9 +15,14 @@ class TitleBar(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addStretch()
-        minimize = QPushButton("—", objectName="windowButton")
-        self.maximize = QPushButton("□", objectName="windowButton")
-        close = QPushButton("×", objectName="closeButton")
+        minimize = QPushButton(objectName="windowButton")
+        self.maximize = QPushButton(objectName="windowButton")
+        close = QPushButton(objectName="closeButton")
+        for button in (minimize, self.maximize, close):
+            button.setIconSize(QSize(16, 16))
+        minimize.setIcon(icon("minimize", "#334155", 16))
+        self.maximize.setIcon(icon("maximize", "#334155", 15))
+        close.setIcon(icon("close", "#334155", 16))
         minimize.setToolTip("最小化")
         self.maximize.setToolTip("最大化")
         close.setToolTip("关闭")
@@ -31,7 +38,8 @@ class TitleBar(QWidget):
         self.update_state()
 
     def update_state(self) -> None:
-        self.maximize.setText("❐" if self.host_window.isMaximized() else "□")
+        name = "restore" if self.host_window.isMaximized() else "maximize"
+        self.maximize.setIcon(icon(name, "#334155", 15))
         self.maximize.setToolTip("还原" if self.host_window.isMaximized() else "最大化")
 
     def mousePressEvent(self, event) -> None:
