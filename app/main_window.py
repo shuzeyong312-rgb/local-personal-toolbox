@@ -8,6 +8,7 @@ from app.icons import icon
 from app.theme import STYLE
 from app.title_bar import TitleBar
 from tools.background_remove.page import BackgroundRemovePage
+from tools.compression.page import CompressionPage
 from tools.resize.page import ResizePage
 from tools.rename.page import RenamePage
 from tools.watermark.page import WatermarkPage
@@ -39,10 +40,12 @@ class MainWindow(QMainWindow):
         self.watermark_page = WatermarkPage()
         self.resize_page = ResizePage()
         self.background_remove_page = BackgroundRemovePage()
+        self.compression_page = CompressionPage()
         self.rename_page = RenamePage()
         self.pages.addWidget(self.watermark_page)
         self.pages.addWidget(self.resize_page)
         self.pages.addWidget(self.background_remove_page)
+        self.pages.addWidget(self.compression_page)
         self.pages.addWidget(self.rename_page)
         self.navigation.currentRowChanged.connect(self.pages.setCurrentIndex)
         main_layout.addWidget(self.pages, 1)
@@ -69,6 +72,7 @@ class MainWindow(QMainWindow):
         self.navigation.addItem(QListWidgetItem(icon("stamp", "#E2E8F0"), "批量打水印"))
         self.navigation.addItem(QListWidgetItem(icon("image", "#E2E8F0"), "修改图片尺寸"))
         self.navigation.addItem(QListWidgetItem(icon("image", "#E2E8F0"), "白底转透明"))
+        self.navigation.addItem(QListWidgetItem(icon("image", "#E2E8F0"), "批量图片压缩"))
         self.navigation.addItem(QListWidgetItem(icon("rename", "#E2E8F0"), "批量重命名"))
         self.navigation.setCurrentRow(0)
         column.addWidget(self.navigation)
@@ -122,6 +126,7 @@ class MainWindow(QMainWindow):
         self.watermark_page.stop_worker()
         self.resize_page.stop_worker()
         self.background_remove_page.stop_worker()
+        self.compression_page.stop_worker()
         self.rename_page.stop_worker()
         super().closeEvent(event)
 

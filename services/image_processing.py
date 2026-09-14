@@ -77,7 +77,9 @@ def ensure_static(image: Image.Image) -> None:
         raise ValueError("暂不支持动态图片水印。")
 
 
-def output_path(source: Path, output_dir: Path, output_format: str = "original") -> Path:
+def output_path(
+    source: Path, output_dir: Path, output_format: str = "original", order_prefix: str = ""
+) -> Path:
     with Image.open(source) as image:
         ensure_static(image)
         actual_format = image.format
@@ -96,10 +98,11 @@ def output_path(source: Path, output_dir: Path, output_format: str = "original")
     name = source.name
     while Path(name).suffix.lower() in {".png", ".jpg", ".jpeg", ".webp"}:
         name = Path(name).stem
-    candidate = output_dir / f"{name}_水印版{suffix}"
+    output_name = f"{order_prefix}_{name}" if order_prefix else name
+    candidate = output_dir / f"{output_name}_水印版{suffix}"
     index = 2
     while candidate.exists():
-        candidate = output_dir / f"{name}_水印版_{index}{suffix}"
+        candidate = output_dir / f"{output_name}_水印版_{index}{suffix}"
         index += 1
     return candidate
 

@@ -72,6 +72,7 @@ class WatermarkPage(QWidget):
     DEFAULT_SPACING = 80
     DEFAULT_OUTPUT_FORMAT = "original"
     DEFAULT_QUALITY = 95
+    DEFAULT_PRESERVE_ORDER = False
 
     def __init__(self) -> None:
         super().__init__()
@@ -196,6 +197,7 @@ class WatermarkPage(QWidget):
         self.position.setCurrentText(self.DEFAULT_POSITION)
         self.margin = self._spin(0, 1000, self.DEFAULT_MARGIN, " px")
         self.tiled = QCheckBox("启用平铺")
+        self.preserve_order = QCheckBox("按输入顺序编号（001、002…）")
         self.angle = self._spin(-180, 180, self.DEFAULT_ANGLE, "°")
         self.spacing = self._spin(0, 1000, self.DEFAULT_SPACING, " px")
         self.angle.setEnabled(False)
@@ -232,6 +234,7 @@ class WatermarkPage(QWidget):
         position_grid.addWidget(self.spacing_field, 0, 1)
         settings_layout.addLayout(position_grid)
         settings_layout.addWidget(self.tiled)
+        settings_layout.addWidget(self.preserve_order)
         settings_layout.addStretch()
 
         self.output_format = AppComboBox()
@@ -326,6 +329,7 @@ class WatermarkPage(QWidget):
             self.output_edit.textChanged,
             self.output_format.currentIndexChanged,
             self.quality.valueChanged,
+            self.preserve_order.toggled,
         ):
             signal.connect(self._save_settings)
 
@@ -366,6 +370,7 @@ class WatermarkPage(QWidget):
             index = self.output_format.findData(output_format)
             self.output_format.setCurrentIndex(index if index >= 0 else 0)
             self.quality.setValue(self._saved_int("quality", self.DEFAULT_QUALITY, 1, 100))
+            self.preserve_order.setChecked(self._saved_value("preserve_order", self.DEFAULT_PRESERVE_ORDER, bool))
             self._update_output_controls()
 
             previous_output = self.settings.value("output_dir")
@@ -406,6 +411,7 @@ class WatermarkPage(QWidget):
             "output_dir": self.output_edit.text().strip(),
             "output_format": self.output_format.currentData(),
             "quality": self.quality.value(),
+            "preserve_order": self.preserve_order.isChecked(),
         }
         for key, value in values.items():
             self.settings.setValue(key, value)
@@ -426,6 +432,7 @@ class WatermarkPage(QWidget):
             self.spacing.setValue(self.DEFAULT_SPACING)
             self.output_format.setCurrentIndex(0)
             self.quality.setValue(self.DEFAULT_QUALITY)
+            self.preserve_order.setChecked(self.DEFAULT_PRESERVE_ORDER)
         finally:
             self._loading_settings = False
         self._toggle_tiling(False)
@@ -651,7 +658,8 @@ class WatermarkPage(QWidget):
         self.output_dir = output
         self.task_dialog = TaskDialog(len(self.sources), output, self)
         self.worker = WatermarkWorker(
-            self.sources.copy(), output, self.options(), self.output_format.currentData(), self.quality.value()
+            self.sources.copy(), output, self.options(), self.output_format.currentData(), self.quality.value(),
+            preserve_order=self.preserve_order.isChecked(),
         )
         self.worker.progress.connect(self._on_progress)
         self.worker.completed.connect(self._on_completed)

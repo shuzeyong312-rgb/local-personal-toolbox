@@ -15,6 +15,7 @@ from PySide6.QtWidgets import QApplication, QFileDialog, QSplitter, QWidget
 from app.main_window import MainWindow
 from app.theme import STYLE
 from tools.background_remove.page import BackgroundRemovePage
+from tools.compression.page import CompressionPage
 from components.controls import AppComboBox, AppSpinBox
 from components.dialogs import TaskDialog
 from tools.watermark.page import WatermarkPage
@@ -55,9 +56,28 @@ class UiStateTests(unittest.TestCase):
             self.assertIn("40 × 30", page.image_info.text())
 
             window = MainWindow()
-            self.assertEqual(["批量打水印", "修改图片尺寸", "白底转透明", "批量重命名"],
+            self.assertEqual(["批量打水印", "修改图片尺寸", "白底转透明", "批量图片压缩", "批量重命名"],
                              [window.navigation.item(i).text() for i in range(window.navigation.count())])
             window.close()
+
+    def test_compression_page_defaults_and_file_details(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            source = Path(name) / "商品.png"
+            Image.new("RGBA", (80, 60), (1, 2, 3, 0)).save(source)
+            page = CompressionPage()
+            self.assertEqual(80, page.quality())
+            self.assertIsNone(page.output_dir)
+            self.assertFalse(page.start_button.isEnabled())
+            page.add_files([source])
+            self.assertTrue(page.start_button.isEnabled())
+            self.assertEqual("PNG", page.table.item(0, 1).text())
+            self.assertEqual("80×60", page.table.item(0, 2).text())
+            page.quality_mode.setCurrentIndex(page.quality_mode.findData(None))
+            self.assertTrue(page.custom_quality.isVisibleTo(page))
+            page.custom_quality.setValue(73)
+            self.assertEqual(73, page.quality())
+            page.clear_files()
+            self.assertEqual(0, page.table.rowCount())
 
     def test_rename_preview_conflict_and_settings(self) -> None:
         with tempfile.TemporaryDirectory() as name:

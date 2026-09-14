@@ -16,6 +16,7 @@ class WatermarkWorker(QThread):
         options: WatermarkOptions,
         output_format: str = "original",
         quality: int = 95,
+        preserve_order: bool = False,
     ) -> None:
         super().__init__()
         self.sources = sources
@@ -23,6 +24,7 @@ class WatermarkWorker(QThread):
         self.options = options
         self.output_format = output_format
         self.quality = quality
+        self.preserve_order = preserve_order
 
     def run(self) -> None:
         success = 0
@@ -32,7 +34,8 @@ class WatermarkWorker(QThread):
             if self.isInterruptionRequested():
                 return
             try:
-                destination = output_path(source, self.output_dir, self.output_format)
+                prefix = str(done).zfill(max(3, len(str(total)))) if self.preserve_order else ""
+                destination = output_path(source, self.output_dir, self.output_format, prefix)
                 process_image(source, destination, self.options, self.output_format, self.quality)
                 success += 1
             except Exception as exc:

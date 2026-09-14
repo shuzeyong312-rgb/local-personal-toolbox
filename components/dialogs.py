@@ -68,6 +68,10 @@ class TaskDialog(BaseDialog):
         counts.addStretch()
         summary.addLayout(counts, 1)
         result_layout.addLayout(summary)
+        self.statistics = QLabel(objectName="statusText")
+        self.statistics.setWordWrap(True)
+        self.statistics.hide()
+        result_layout.addWidget(self.statistics)
         output = QWidget(objectName="outputSummary")
         output_layout = QVBoxLayout(output)
         output_layout.setContentsMargins(14, 12, 14, 12)
@@ -110,6 +114,9 @@ class TaskDialog(BaseDialog):
         self.progress.setRange(0, total)
         self.progress.setValue(done)
         self.progress_count.setText(f"已处理 {done} / 总数 {total}")
+
+    def set_current(self, name: str) -> None:
+        self.status.setText(f"当前：{name}")
 
     def show_result(self, success: int, failed: int, failures: list[str], title: str = "处理完成") -> None:
         self.processing = False
