@@ -102,6 +102,10 @@ QLabel#outputCaption {{ color: {TEXT_SECONDARY}; font-size: 11px; background: tr
 QLabel#outputName {{ color: #344258; font-size: 14px; font-weight: 600; background: transparent; }}
 QLabel#outputPath {{ color: {TEXT_DISABLED}; font-size: 11px; background: transparent; }}
 QPlainTextEdit#failureDetails {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: {RADIUS_MD}px; padding: 8px; }}
+QTableWidget#previewTable {{ background: {SURFACE}; alternate-background-color: #F8FAFC; border: 1px solid {BORDER}; border-radius: {RADIUS_MD}px; gridline-color: #EEF2F7; outline: 0; }}
+QTableWidget#previewTable::item {{ padding: 7px; }}
+QTableWidget#previewTable::item:selected {{ background: #E8F0FF; color: #1F57BD; }}
+QHeaderView::section {{ background: #F8FAFC; color: #526175; border: 0; border-bottom: 1px solid {BORDER}; padding: 9px 7px; font-weight: 600; }}
 QLabel#statusText {{ color: #536175; font-size: 12px; }}
 QLabel#fieldError {{ color: {DANGER}; font-size: 12px; }}
 QLabel#warningText {{ color: {WARNING}; font-size: 12px; }}

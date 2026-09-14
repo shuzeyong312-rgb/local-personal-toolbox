@@ -8,6 +8,7 @@ from app.icons import icon
 from app.theme import STYLE
 from app.title_bar import TitleBar
 from tools.resize.page import ResizePage
+from tools.rename.page import RenamePage
 from tools.watermark.page import WatermarkPage
 
 
@@ -36,8 +37,10 @@ class MainWindow(QMainWindow):
         self.pages = QStackedWidget()
         self.watermark_page = WatermarkPage()
         self.resize_page = ResizePage()
+        self.rename_page = RenamePage()
         self.pages.addWidget(self.watermark_page)
         self.pages.addWidget(self.resize_page)
+        self.pages.addWidget(self.rename_page)
         self.navigation.currentRowChanged.connect(self.pages.setCurrentIndex)
         main_layout.addWidget(self.pages, 1)
         layout.addWidget(main, 1)
@@ -62,6 +65,7 @@ class MainWindow(QMainWindow):
         self.navigation.setIconSize(QSize(18, 18))
         self.navigation.addItem(QListWidgetItem(icon("stamp", "#E2E8F0"), "批量打水印"))
         self.navigation.addItem(QListWidgetItem(icon("image", "#E2E8F0"), "修改图片尺寸"))
+        self.navigation.addItem(QListWidgetItem(icon("rename", "#E2E8F0"), "批量重命名"))
         self.navigation.setCurrentRow(0)
         column.addWidget(self.navigation)
         column.addWidget(QLabel("本地处理 · 数据不上传", objectName="privacy"))
@@ -113,6 +117,7 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event) -> None:
         self.watermark_page.stop_worker()
         self.resize_page.stop_worker()
+        self.rename_page.stop_worker()
         super().closeEvent(event)
 
 

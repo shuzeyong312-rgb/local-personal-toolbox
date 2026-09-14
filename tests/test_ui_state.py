@@ -18,6 +18,7 @@ from components.controls import AppComboBox, AppSpinBox
 from components.dialogs import TaskDialog
 from tools.watermark.page import WatermarkPage
 from tools.resize.page import ResizePage
+from tools.rename.page import RenamePage
 
 
 class UiStateTests(unittest.TestCase):
@@ -36,6 +37,38 @@ class UiStateTests(unittest.TestCase):
     def setUp(self) -> None:
         QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "watermark").clear()
         QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "resize").clear()
+        QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "rename").clear()
+
+    def test_rename_preview_conflict_and_settings(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            first, second = root / "uuid-b.png", root / "uuid-a.jpg"
+            first.write_text("b", encoding="utf-8")
+            second.write_text("a", encoding="utf-8")
+            os.utime(first, (100, 100))
+            os.utime(second, (100, 100))
+            page = RenamePage()
+            self.assertFalse(page.start_button.isEnabled())
+            page.add_files([first, second])
+            self.assertEqual("uuid-a.jpg", page.table.item(0, 0).text())
+            self.assertEqual("详情页_1.jpg", page.table.item(0, 2).text())
+            self.assertTrue(page.start_button.isEnabled())
+            page.digits.setCurrentIndex(1)
+            self.assertEqual("详情页_01.jpg", page.table.item(0, 2).text())
+            page.prefix.setText("商品_")
+            restored = RenamePage()
+            self.assertEqual("商品_", restored.prefix.text())
+            self.assertEqual(1, restored.digits.currentIndex())
+            occupied = root / "商品_01.jpg"
+            occupied.write_text("keep", encoding="utf-8")
+            page.refresh_preview()
+            self.assertFalse(page.start_button.isEnabled())
+            self.assertIn("目标文件已存在", page.error_label.text())
+            page.resize(860, 652)
+            page.show()
+            self.app.processEvents()
+            self.assertLessEqual(page.start_button.mapTo(page, page.start_button.rect().bottomLeft()).y(), page.height())
+            page.close()
 
     def test_resize_page_modes_preview_settings_and_locking(self) -> None:
         with tempfile.TemporaryDirectory() as name:

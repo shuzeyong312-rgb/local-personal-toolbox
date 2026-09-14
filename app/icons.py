@@ -9,6 +9,7 @@ PATHS = {
     "plus": '<path d="M12 5v14M5 12h14"/>',
     "folder": '<path d="M3 6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
     "folder-open": '<path d="M3 7V6a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v2"/><path d="M3 10h18l-2 9H5Z"/>',
+    "rename": '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
     "minimize": '<path d="M5 12h14"/>',
     "maximize": '<rect x="5" y="5" width="14" height="14" rx="1"/>',
     "restore": '<path d="M8 8V5h11v11h-3"/><rect x="5" y="8" width="11" height="11" rx="1"/>',

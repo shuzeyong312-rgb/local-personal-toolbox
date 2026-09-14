@@ -33,8 +33,8 @@ class BaseDialog(QDialog):
 
 
 class TaskDialog(BaseDialog):
-    def __init__(self, total: int, output_dir: Path, parent: QWidget | None = None) -> None:
-        super().__init__("正在处理图片", parent)
+    def __init__(self, total: int, output_dir: Path, parent: QWidget | None = None, title: str = "正在处理图片") -> None:
+        super().__init__(title, parent)
         self.output_dir = output_dir
         self.total = total
         self.success = 0
