@@ -14,6 +14,7 @@ from PySide6.QtWidgets import QApplication, QFileDialog, QSplitter, QWidget
 
 from app.main_window import MainWindow
 from app.theme import STYLE
+from tools.background_remove.page import BackgroundRemovePage
 from components.controls import AppComboBox, AppSpinBox
 from components.dialogs import TaskDialog
 from tools.watermark.page import WatermarkPage
@@ -38,6 +39,25 @@ class UiStateTests(unittest.TestCase):
         QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "watermark").clear()
         QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "resize").clear()
         QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "rename").clear()
+        QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "background_remove").clear()
+
+    def test_background_remove_page_defaults_and_navigation(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            source = Path(name) / "商品.png"
+            Image.new("RGB", (40, 30), "white").save(source)
+            page = BackgroundRemovePage()
+            self.assertEqual("standard", page.mode.currentData())
+            self.assertTrue(page.soften_edges.isChecked())
+            self.assertEqual("processed", page.preview_state.currentData())
+            page.add_files([source])
+            page.update_preview()
+            self.assertTrue(page.start_button.isEnabled())
+            self.assertIn("40 × 30", page.image_info.text())
+
+            window = MainWindow()
+            self.assertEqual(["批量打水印", "修改图片尺寸", "白底转透明", "批量重命名"],
+                             [window.navigation.item(i).text() for i in range(window.navigation.count())])
+            window.close()
 
     def test_rename_preview_conflict_and_settings(self) -> None:
         with tempfile.TemporaryDirectory() as name:
