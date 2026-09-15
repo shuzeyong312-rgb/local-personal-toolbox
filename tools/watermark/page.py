@@ -656,7 +656,7 @@ class WatermarkPage(QWidget):
         self._remember_current_text()
         output = Path(self.output_edit.text().strip()).resolve()
         self.output_dir = output
-        self.task_dialog = TaskDialog(len(self.sources), output, self)
+        self.task_dialog = TaskDialog(len(self.sources), output, self, clear_task_inputs=self.clear_files)
         self.worker = WatermarkWorker(
             self.sources.copy(), output, self.options(), self.output_format.currentData(), self.quality.value(),
             preserve_order=self.preserve_order.isChecked(),
@@ -679,7 +679,7 @@ class WatermarkPage(QWidget):
     def _worker_finished(self) -> None:
         if self.task_dialog and self.task_dialog.processing:
             success = self.task_dialog.success
-            self.task_dialog.show_result(success, self.task_dialog.total - success, ["任务异常结束"], "处理完成")
+            self.task_dialog.show_result(success, self.task_dialog.total - success, ["任务异常结束"], "处理完成", completed=False)
         self.worker = None
         self._update_start_button()
 

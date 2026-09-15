@@ -10,12 +10,16 @@ from utils.image_files import is_supported_image
 class ImageDropList(QListWidget):
     filesDropped = Signal(list)
 
-    def __init__(self) -> None:
+    def __init__(self, extensions: set[str] | None = None) -> None:
         super().__init__()
+        self.extensions = extensions
         self.setObjectName("dropList")
         self.setAcceptDrops(True)
         self.setMinimumHeight(130)
         self.setToolTip("可将 JPG、JPEG、PNG、WEBP 图片拖到这里")
+
+    def _supported(self, path: Path) -> bool:
+        return path.is_file() and (path.suffix.lower() in self.extensions if self.extensions else is_supported_image(path))
 
     def paintEvent(self, event) -> None:
         super().paintEvent(event)
@@ -36,8 +40,8 @@ class ImageDropList(QListWidget):
         for url in event.mimeData().urls():
             path = Path(url.toLocalFile())
             if path.is_dir():
-                files.extend(p for p in path.rglob("*") if is_supported_image(p))
-            elif is_supported_image(path):
+                files.extend(p for p in path.rglob("*") if self._supported(p))
+            elif self._supported(path):
                 files.append(path)
         if files:
             self.filesDropped.emit(files)

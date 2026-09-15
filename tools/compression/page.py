@@ -206,7 +206,7 @@ class CompressionPage(QWidget):
         if self.worker or not self.sources:
             return
         dialog_output = self.output_dir or self.sources[0].parent / "压缩结果"
-        self.task_dialog = TaskDialog(len(self.sources), dialog_output, self, "正在压缩图片")
+        self.task_dialog = TaskDialog(len(self.sources), dialog_output, self, "正在压缩图片", clear_task_inputs=self.clear_files)
         self.worker = CompressionWorker(self.sources.copy(), self.quality(), self.output_dir)
         self.worker.item_completed.connect(self._item_completed)
         self.worker.item_failed.connect(self._item_failed)
@@ -239,7 +239,7 @@ class CompressionPage(QWidget):
 
     def _worker_finished(self) -> None:
         if self.task_dialog and self.task_dialog.processing:
-            self.task_dialog.show_result(0, len(self.sources), ["任务异常结束"], "压缩完成")
+            self.task_dialog.show_result(0, len(self.sources), ["任务异常结束"], "压缩完成", completed=False)
         self.worker = None
         self.settings_card.setEnabled(True)
         self.files_card.setEnabled(True)

@@ -1,6 +1,7 @@
+from collections.abc import Callable
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPlainTextEdit, QProgressBar, QPushButton, QVBoxLayout, QWidget
 
 from utils.system import open_folder
@@ -33,13 +34,18 @@ class BaseDialog(QDialog):
 
 
 class TaskDialog(BaseDialog):
-    def __init__(self, total: int, output_dir: Path, parent: QWidget | None = None, title: str = "正在处理图片") -> None:
+    cancel_requested = Signal()
+
+    def __init__(self, total: int, output_dir: Path, parent: QWidget | None = None, title: str = "正在处理图片", cancellable: bool = False, clear_task_inputs: Callable[[], None] | None = None) -> None:
         super().__init__(title, parent)
         self.output_dir = output_dir
         self.total = total
         self.success = 0
         self.failed = 0
         self.processing = True
+        self._clear_task_inputs = clear_task_inputs
+        self._clear_inputs_on_close = False
+        self.finished.connect(self._finish_task)
 
         self.progress = QProgressBar()
         self.progress.setRange(0, total)
@@ -50,6 +56,10 @@ class TaskDialog(BaseDialog):
         self.layout.addWidget(self.progress_count)
         self.status = QLabel("正在处理，请稍候", objectName="statusText")
         self.layout.addWidget(self.status)
+        self.cancel_button = QPushButton("取消任务")
+        self.cancel_button.setVisible(cancellable)
+        self.cancel_button.clicked.connect(self._request_cancel)
+        self.layout.addWidget(self.cancel_button, alignment=Qt.AlignmentFlag.AlignRight)
 
         self.result = QWidget()
         result_layout = QVBoxLayout(self.result)
@@ -118,13 +128,20 @@ class TaskDialog(BaseDialog):
     def set_current(self, name: str) -> None:
         self.status.setText(f"当前：{name}")
 
-    def show_result(self, success: int, failed: int, failures: list[str], title: str = "处理完成") -> None:
+    def _request_cancel(self) -> None:
+        self.cancel_button.setEnabled(False)
+        self.status.setText("正在取消，请稍候…")
+        self.cancel_requested.emit()
+
+    def show_result(self, success: int, failed: int, failures: list[str], title: str = "处理完成", completed: bool = True) -> None:
         self.processing = False
+        self._clear_inputs_on_close = completed
         self.title_label.setText(title)
         self.setWindowTitle(title)
         self.progress.hide()
         self.progress_count.hide()
         self.status.hide()
+        self.cancel_button.hide()
         self.success_label.setText(f"成功 {success} 张")
         self.failure_label.setText(f"失败 {failed} 张")
         self.failure_label.setProperty("empty", failed == 0)
@@ -135,6 +152,11 @@ class TaskDialog(BaseDialog):
         self.details.setPlainText("\n".join(failures))
         self.details_button.setVisible(bool(failures))
         self.result.show()
+
+    def _finish_task(self) -> None:
+        if self._clear_inputs_on_close and self._clear_task_inputs:
+            self._clear_inputs_on_close = False
+            self._clear_task_inputs()
 
     def reject(self) -> None:
         if not self.processing:

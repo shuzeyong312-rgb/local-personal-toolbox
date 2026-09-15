@@ -7,11 +7,26 @@ from PIL import Image
 from services.image_processing import WatermarkOptions
 from services.image_resize import ResizeOptions
 from tools.compression.worker import CompressionWorker
+from tools.conversion.worker import ConversionWorker
+from services.image_conversion import ConversionOptions
 from tools.resize.worker import ResizeWorker
 from tools.watermark.worker import WatermarkWorker
 
 
 class WorkerTests(unittest.TestCase):
+    def test_conversion_worker_continues_after_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            invalid, valid = root / "broken.png", root / "valid.png"
+            invalid.write_text("not an image", encoding="utf-8")
+            Image.new("RGBA", (10, 12), (255, 0, 0, 0)).save(valid)
+            completed = []
+            worker = ConversionWorker([invalid, valid], root / "output", ConversionOptions(target_format="jpg"))
+            worker.completed.connect(lambda *result: completed.append(result))
+            worker.run()
+            self.assertEqual((1, 0, 1), completed[0][:3])
+            self.assertTrue((root / "output" / "valid.jpg").exists())
+
     def test_one_failure_does_not_stop_batch(self) -> None:
         with tempfile.TemporaryDirectory() as name:
             root = Path(name)

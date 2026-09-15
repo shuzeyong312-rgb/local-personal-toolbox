@@ -231,7 +231,7 @@ class RenamePage(QWidget):
         if self.worker or not self.start_button.isEnabled():
             return
         folder = self.plans[0].source.parent
-        self.task_dialog = TaskDialog(len(self.plans), folder, self, "正在重命名文件")
+        self.task_dialog = TaskDialog(len(self.plans), folder, self, "正在重命名文件", clear_task_inputs=self.clear_files)
         self.worker = RenameWorker(self.plans.copy())
         self.worker.progress.connect(lambda done, total, success, failed: self.task_dialog and self.task_dialog.update_progress(done, total, success, failed))
         self.worker.completed.connect(self._on_completed)
@@ -246,10 +246,14 @@ class RenamePage(QWidget):
             self.task_dialog.show_result(success, failed, failures, "重命名完成")
 
     def _worker_finished(self) -> None:
+        completed = bool(self.task_dialog and not self.task_dialog.processing)
+        if self.task_dialog and self.task_dialog.processing:
+            self.task_dialog.show_result(0, len(self.plans), ["任务异常结束"], "重命名完成", completed=False)
         self.worker = None
         self.settings_card.setEnabled(True)
         self.preview_card.setEnabled(True)
-        self.sources = [plan.destination for plan in self.plans if plan.destination.exists()]
+        if completed:
+            self.sources = [plan.destination for plan in self.plans if plan.destination.exists()]
         self.refresh_preview()
 
     def stop_worker(self) -> None:

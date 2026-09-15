@@ -16,6 +16,7 @@ from app.main_window import MainWindow
 from app.theme import STYLE
 from tools.background_remove.page import BackgroundRemovePage
 from tools.compression.page import CompressionPage
+from tools.conversion.page import ConversionPage
 from components.controls import AppComboBox, AppSpinBox
 from components.dialogs import TaskDialog
 from tools.watermark.page import WatermarkPage
@@ -41,6 +42,30 @@ class UiStateTests(unittest.TestCase):
         QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "resize").clear()
         QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "rename").clear()
         QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "background_remove").clear()
+        QSettings(QSettings.Format.IniFormat, QSettings.Scope.UserScope, "LocalToolbox", "conversion").clear()
+
+    def test_conversion_page_defaults_visibility_settings_and_navigation(self) -> None:
+        page = ConversionPage()
+        self.assertEqual("png", page.target_format.currentData())
+        self.assertEqual("specified", page.output_mode.currentData())
+        self.assertEqual("rename", page.collision.currentData())
+        self.assertFalse(page.jpg_quality.isVisibleTo(page))
+        page.target_format.setCurrentIndex(page.target_format.findData("jpg"))
+        self.assertTrue(page.jpg_quality.isVisibleTo(page))
+        self.assertTrue(page.background.isVisibleTo(page))
+        page.jpg_quality.setValue(93)
+        page.collision.setCurrentIndex(page.collision.findData("skip"))
+        page.prefix.setText("bad/")
+        self.assertFalse(page.start_button.isEnabled())
+        self.assertIn("非法字符", page.output_error.text())
+        page.prefix.clear()
+        restored = ConversionPage()
+        self.assertEqual("jpg", restored.target_format.currentData())
+        self.assertEqual(93, restored.jpg_quality.value())
+        self.assertEqual("skip", restored.collision.currentData())
+        window = MainWindow()
+        self.assertEqual("图片格式转换", window.navigation.item(4).text())
+        window.close()
 
     def test_background_remove_page_defaults_and_navigation(self) -> None:
         with tempfile.TemporaryDirectory() as name:
@@ -56,7 +81,7 @@ class UiStateTests(unittest.TestCase):
             self.assertIn("40 × 30", page.image_info.text())
 
             window = MainWindow()
-            self.assertEqual(["批量打水印", "修改图片尺寸", "白底转透明", "批量图片压缩", "批量重命名"],
+            self.assertEqual(["批量打水印", "修改图片尺寸", "白底转透明", "批量图片压缩", "图片格式转换", "批量重命名"],
                              [window.navigation.item(i).text() for i in range(window.navigation.count())])
             window.close()
 
@@ -220,6 +245,21 @@ class UiStateTests(unittest.TestCase):
 
         dialog.show_result(5, 0, [])
         self.assertTrue(dialog.failure_label.property("empty"))
+
+    def test_task_dialog_clears_inputs_only_after_completed_result_closes(self) -> None:
+        cleared = []
+        dialog = TaskDialog(2, Path("output"), clear_task_inputs=lambda: cleared.append(True))
+        dialog.show_result(1, 1, ["bad.png: damaged"])
+        self.assertEqual([], cleared)
+        self.assertEqual("bad.png: damaged", dialog.details.toPlainText())
+        dialog.accept()
+        self.assertEqual([True], cleared)
+
+        for title in ("任务已取消", "任务异常结束"):
+            dialog = TaskDialog(2, Path("output"), clear_task_inputs=lambda: cleared.append(True))
+            dialog.show_result(0, 2, [title], title, completed=False)
+            dialog.accept()
+        self.assertEqual([True], cleared)
 
     def test_tiling_only_shows_relevant_fields(self) -> None:
         page = WatermarkPage()

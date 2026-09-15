@@ -303,7 +303,7 @@ class BackgroundRemovePage(QWidget):
             return
         output = Path(self.output_edit.text()).resolve()
         self.output_dir = output
-        self.task_dialog = TaskDialog(len(self.sources), output, self)
+        self.task_dialog = TaskDialog(len(self.sources), output, self, clear_task_inputs=self.clear_files)
         self.worker = BackgroundRemoveWorker(self.sources.copy(), output, self.options())
         self.worker.current_file.connect(lambda name: self.task_dialog and self.task_dialog.status.setText(f"正在处理：{name}"))
         self.worker.progress.connect(lambda done, total, success, failed: self.task_dialog and self.task_dialog.update_progress(done, total, success, failed))
@@ -316,7 +316,7 @@ class BackgroundRemovePage(QWidget):
 
     def _worker_finished(self) -> None:
         if self.task_dialog and self.task_dialog.processing:
-            self.task_dialog.show_result(self.task_dialog.success, self.task_dialog.total - self.task_dialog.success, ["任务异常结束"])
+            self.task_dialog.show_result(self.task_dialog.success, self.task_dialog.total - self.task_dialog.success, ["任务异常结束"], completed=False)
         self.worker = None
         self._set_processing(False)
         self._update_start_button()
