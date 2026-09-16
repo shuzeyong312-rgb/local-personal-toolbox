@@ -1,7 +1,7 @@
 import sys
 
 from PySide6.QtCore import QEvent, QSize, Qt
-from PySide6.QtGui import QCursor
+from PySide6.QtGui import QColor, QCursor
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QLabel, QListWidget, QListWidgetItem, QMainWindow, QStackedWidget, QVBoxLayout, QWidget
 
 from app.icons import icon
@@ -12,11 +12,18 @@ from tools.compression.page import CompressionPage
 from tools.conversion.page import ConversionPage
 from tools.resize.page import ResizePage
 from tools.rename.page import RenamePage
+from tools.order_calendar.page import OrderCalendarPage
 from tools.watermark.page import WatermarkPage
 
 
 class MainWindow(QMainWindow):
     RESIZE_MARGIN = 6
+    NAVIGATION_SECTIONS = (
+        ("图片工具", (("批量打水印", "stamp", 0), ("修改图片尺寸", "image", 1), ("白底转透明", "image", 2),
+                     ("批量图片压缩", "image", 3), ("图片格式转换", "image", 4))),
+        ("文件工具", (("批量重命名", "rename", 5),)),
+        ("电商运营", (("出单日历", "calendar", 6),)),
+    )
 
     def __init__(self) -> None:
         super().__init__()
@@ -44,13 +51,16 @@ class MainWindow(QMainWindow):
         self.compression_page = CompressionPage()
         self.conversion_page = ConversionPage()
         self.rename_page = RenamePage()
+        self.order_calendar_page = OrderCalendarPage()
         self.pages.addWidget(self.watermark_page)
         self.pages.addWidget(self.resize_page)
         self.pages.addWidget(self.background_remove_page)
         self.pages.addWidget(self.compression_page)
         self.pages.addWidget(self.conversion_page)
         self.pages.addWidget(self.rename_page)
-        self.navigation.currentRowChanged.connect(self.pages.setCurrentIndex)
+        self.pages.addWidget(self.order_calendar_page)
+        self.navigation.currentItemChanged.connect(lambda current, _previous: self._activate_navigation(current))
+        self._activate_navigation(self.navigation.currentItem())
         main_layout.addWidget(self.pages, 1)
         layout.addWidget(main, 1)
         self.setCentralWidget(root)
@@ -69,19 +79,28 @@ class MainWindow(QMainWindow):
         brand_layout.addWidget(QLabel("个人工具箱", objectName="brand"))
         brand_layout.addWidget(QLabel("LOCAL TOOLBOX", objectName="brandHint"))
         column.addWidget(brand_box)
-        column.addWidget(QLabel("图片工具", objectName="sidebarSection"))
         self.navigation = QListWidget(objectName="navigation")
         self.navigation.setIconSize(QSize(18, 18))
-        self.navigation.addItem(QListWidgetItem(icon("stamp", "#E2E8F0"), "批量打水印"))
-        self.navigation.addItem(QListWidgetItem(icon("image", "#E2E8F0"), "修改图片尺寸"))
-        self.navigation.addItem(QListWidgetItem(icon("image", "#E2E8F0"), "白底转透明"))
-        self.navigation.addItem(QListWidgetItem(icon("image", "#E2E8F0"), "批量图片压缩"))
-        self.navigation.addItem(QListWidgetItem(icon("image", "#E2E8F0"), "图片格式转换"))
-        self.navigation.addItem(QListWidgetItem(icon("rename", "#E2E8F0"), "批量重命名"))
-        self.navigation.setCurrentRow(0)
+        first_item = None
+        for title, entries in self.NAVIGATION_SECTIONS:
+            section = QListWidgetItem(title)
+            section.setFlags(Qt.ItemFlag.NoItemFlags)
+            section.setForeground(QColor("#7F8DA3"))
+            section.setSizeHint(QSize(180, 34))
+            self.navigation.addItem(section)
+            for label, icon_name, page_index in entries:
+                item = QListWidgetItem(icon(icon_name, "#E2E8F0"), label)
+                item.setData(Qt.ItemDataRole.UserRole, page_index)
+                self.navigation.addItem(item)
+                first_item = first_item or item
+        self.navigation.setCurrentItem(first_item)
         column.addWidget(self.navigation)
         column.addWidget(QLabel("本地处理 · 数据不上传", objectName="privacy"))
         return sidebar
+
+    def _activate_navigation(self, item: QListWidgetItem | None) -> None:
+        if item and item.data(Qt.ItemDataRole.UserRole) is not None and hasattr(self, "pages"):
+            self.pages.setCurrentIndex(item.data(Qt.ItemDataRole.UserRole))
 
     def event(self, event) -> bool:
         if event.type() == QEvent.Type.WindowStateChange and hasattr(self, "title_bar"):

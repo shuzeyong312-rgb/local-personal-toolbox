@@ -39,6 +39,8 @@ QLabel#pageTitle {{ color: {TEXT_PRIMARY}; font-size: 27px; font-weight: 700; }}
 QLabel#pageSubtitle {{ color: {TEXT_SECONDARY}; font-size: 13px; }}
 QWidget#card {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: {RADIUS_LG}px; }}
 QLabel#cardTitle {{ color: {TEXT_PRIMARY}; font-size: 16px; font-weight: 700; }}
+QLabel#statLabel {{ color: {TEXT_SECONDARY}; font-size: 12px; }}
+QLabel#statValue {{ color: {TEXT_PRIMARY}; font-size: 22px; font-weight: 700; }}
 QLabel#fieldLabel {{ color: #344258; font-size: 13px; font-weight: 500; }}
 QLabel#fieldValue {{ color: {TEXT_SECONDARY}; font-size: 12px; }}
 QLabel#helperText {{ color: {TEXT_SECONDARY}; font-size: 12px; }}
@@ -47,6 +49,16 @@ QLineEdit:hover, QSpinBox:hover, QComboBox:hover {{ border-color: #AAB7C8; }}
 QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{ border: 1px solid {FOCUS}; }}
 QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {{ background: #EDF0F4; color: {TEXT_DISABLED}; border-color: #E3E7ED; }}
 QLineEdit[error="true"] {{ border: 1px solid {DANGER}; background: #FFF9F9; }}
+QFrame#datePopover {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
+QLabel#datePickerMonth {{ font-size: 15px; font-weight: 700; }}
+QPushButton#iconButton {{ min-width: 32px; max-width: 32px; min-height: 32px; max-height: 32px; padding: 0; border-color: transparent; }}
+QPushButton#linkButton {{ color: {PRIMARY}; border-color: transparent; background: transparent; }}
+QWidget#dateInput {{ background: transparent; }}
+QLineEdit#dateInput {{ border-top-right-radius: 0; border-bottom-right-radius: 0; }}
+QPushButton#dateButton {{ min-width: 40px; max-width: 40px; padding: 0; border-left: 0; border-top-left-radius: 0; border-bottom-left-radius: 0; color: {TEXT_SECONDARY}; }}
+QCalendarWidget#datePickerCalendar {{ background: {SURFACE}; border: 0; }}
+QCalendarWidget#datePickerCalendar QAbstractItemView {{ background: {SURFACE}; color: {TEXT_PRIMARY}; border: 0; outline: 0; selection-background-color: {PRIMARY}; selection-color: white; }}
+QCalendarWidget#datePickerCalendar QHeaderView::section {{ background: {SURFACE}; color: {TEXT_SECONDARY}; border: 0; padding: 5px; }}
 QSpinBox::up-button, QSpinBox::down-button {{ width: 28px; border-left: 1px solid {BORDER}; background: {SURFACE_HOVER}; }}
 QSpinBox::up-button {{ subcontrol-position: top right; border-top-right-radius: 7px; }}
 QSpinBox::down-button {{ subcontrol-position: bottom right; border-bottom-right-radius: 7px; border-top: 1px solid {BORDER}; }}
@@ -92,6 +104,24 @@ QDialog#baseDialog {{ background: transparent; }}
 QWidget#dialogShell {{ background: {APP_BACKGROUND}; border: 1px solid {BORDER}; border-radius: {RADIUS_LG}px; }}
 QWidget#dialogContent {{ background: {SURFACE}; border: 0; border-bottom-left-radius: {RADIUS_LG}px; border-bottom-right-radius: {RADIUS_LG}px; }}
 QLabel#dialogTitle {{ color: {TEXT_PRIMARY}; font-size: 18px; font-weight: 700; background: transparent; }}
+QScrollArea#planDialogScroll, QScrollArea#planDialogScroll > QWidget > QWidget {{ background: {SURFACE}; border: 0; }}
+QLabel#sectionTitle {{ color: {TEXT_PRIMARY}; font-size: 15px; font-weight: 700; }}
+QLabel#sectionHint {{ color: {TEXT_SECONDARY}; font-size: 12px; }}
+QFrame#sectionDivider {{ color: #E8EDF3; max-height: 1px; }}
+QWidget#stageCard {{ background: #F8FAFC; border: 1px solid #E5EAF1; border-radius: {RADIUS_MD}px; }}
+QLabel#stageTitle {{ font-size: 14px; font-weight: 700; }}
+QPushButton#dangerLink {{ color: {DANGER}; border: 0; background: transparent; min-height: 30px; padding: 0 6px; }}
+QPushButton#dangerLink:hover {{ background: #FEF2F2; }}
+QWidget#planPreview {{ background: #F8FAFC; border: 1px solid #E8EDF3; border-radius: {RADIUS_MD}px; }}
+QLabel#previewItem {{ color: #344258; background: {SURFACE}; border: 1px solid #E5EAF1; border-radius: 6px; padding: 8px 10px; }}
+QScrollArea#calendarTaskArea, QScrollArea#pendingReviewArea, QScrollArea#orderCalendarPageScroll,
+QScrollArea#orderCalendarPageScroll > QWidget > QWidget, QWidget#orderCalendarContent,
+QWidget#calendarTaskContainer {{ background: transparent; border: 0; }}
+QWidget#emptyState {{ background: {SURFACE}; }}
+QWidget#pendingReviewList, QWidget#reviewEmpty {{ background: transparent; }}
+QWidget#reviewRow {{ background: transparent; border-top: 1px solid #EEF2F7; }}
+QPushButton#reviewName {{ color: {PRIMARY}; font-weight: 700; background: transparent; border: 0; min-width: 70px; text-align: left; padding: 0; }}
+QLabel#reviewDate, QLabel#reviewStatus {{ color: {TEXT_SECONDARY}; }}
 QLabel#progressCount {{ color: #344258; font-size: 13px; font-weight: 600; }}
 QLabel#resultIcon {{ color: #237A57; background: #EAF7F0; border-radius: 16px; min-width: 32px; max-width: 32px; min-height: 32px; max-height: 32px; font-size: 17px; font-weight: 700; qproperty-alignment: AlignCenter; }}
 QLabel#resultSuccess {{ color: #315F4D; background: #F0F8F4; border-radius: 6px; padding: 7px 10px; font-size: 13px; font-weight: 600; }}

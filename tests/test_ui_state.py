@@ -64,7 +64,7 @@ class UiStateTests(unittest.TestCase):
         self.assertEqual(93, restored.jpg_quality.value())
         self.assertEqual("skip", restored.collision.currentData())
         window = MainWindow()
-        self.assertEqual("图片格式转换", window.navigation.item(4).text())
+        self.assertIn("图片格式转换", [window.navigation.item(i).text() for i in range(window.navigation.count())])
         window.close()
 
     def test_background_remove_page_defaults_and_navigation(self) -> None:
@@ -81,8 +81,10 @@ class UiStateTests(unittest.TestCase):
             self.assertIn("40 × 30", page.image_info.text())
 
             window = MainWindow()
-            self.assertEqual(["批量打水印", "修改图片尺寸", "白底转透明", "批量图片压缩", "图片格式转换", "批量重命名"],
+            self.assertEqual(["图片工具", "批量打水印", "修改图片尺寸", "白底转透明", "批量图片压缩", "图片格式转换", "文件工具", "批量重命名", "电商运营", "出单日历"],
                              [window.navigation.item(i).text() for i in range(window.navigation.count())])
+            window.navigation.setCurrentRow(9)
+            self.assertEqual(6, window.pages.currentIndex())
             window.close()
 
     def test_compression_page_defaults_and_file_details(self) -> None:
