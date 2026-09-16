@@ -345,6 +345,7 @@ class TaskDialog(BaseDialog):
             show_message(self, "无法保存", "请输入平台名称。"); return
         self.calendar.upsert_record(
             self.task.get("plan_id") if self.task else None, self.day,
+            record_id=self.task.get("id") if self.task else None,
             source=self.task.get("source", "schedule") if self.task else "manual",
             platform=self.platform.currentData(), custom_platform_name=self.custom_platform.text().strip(), model=self.model.text().strip(),
             target_quantity=self.target.value(), actual_quantity=self.actual.value(),
@@ -391,6 +392,19 @@ class PlanManagerDialog(BaseDialog):
             planned = int(plan.get("initial_completed_quantity", 0)) + sum(
                 task["target_quantity"] for task in self.calendar.scheduled(plan, parse_date(plan["start_date"]), date.today())
             )
+            remaining = int(plan.get("schedule_completed_occurrences", 0))
+            running = int(plan.get("initial_completed_quantity", 0))
+            for stage in plan["stages"]:
+                target = int(stage["target_quantity"])
+                available = (int(stage["count"]) if stage["type"] == "fixed_count" else
+                             max(0, -(-(int(stage["until_total"]) - running) // target))
+                             if stage["type"] == "until_total" else remaining)
+                used = min(remaining, available)
+                planned += used * target
+                running += used * target
+                remaining -= used
+                if not remaining:
+                    break
             future = self.calendar.scheduled(plan, date.today(), future_end)
             next_day = future[0]["date"] if future else "—"
             values = (platform_name(plan), plan["model"], self._stage(plan, planned), str(actual), next_day,
@@ -414,7 +428,7 @@ class PlanManagerDialog(BaseDialog):
 
     def toggle(self) -> None:
         plan = self.selected()
-        if plan:
+        if plan and plan["status"] != "ended":
             self.calendar.update_plan(plan["id"], {"status": "active" if plan["status"] == "paused" else "paused"})
             self.refresh(); self.changed.emit()
 
@@ -629,13 +643,13 @@ class OrderCalendarPage(QWidget):
         if TaskDialog(self.calendar_data, parse_date(task["date"]), task, self).exec(): self.refresh()
 
     def complete(self, task: dict) -> None:
-        self.calendar_data.upsert_record(task.get("plan_id"), parse_date(task["date"]), source=task["source"],
+        self.calendar_data.upsert_record(task.get("plan_id"), parse_date(task["date"]), record_id=task.get("id"), source=task["source"],
                                          platform=task["platform"], custom_platform_name=task.get("custom_platform_name", ""), model=task["model"],
                                          target_quantity=task["target_quantity"], actual_quantity=task["target_quantity"],
                                          reviewed_quantity=task["reviewed_quantity"], note=task.get("note", "")); self.refresh()
 
     def mark_reviewed(self, task: dict) -> None:
-        self.calendar_data.upsert_record(task.get("plan_id"), parse_date(task["date"]), source=task["source"],
+        self.calendar_data.upsert_record(task.get("plan_id"), parse_date(task["date"]), record_id=task.get("id"), source=task["source"],
                                          platform=task["platform"], custom_platform_name=task.get("custom_platform_name", ""), model=task["model"],
                                          target_quantity=task["target_quantity"], actual_quantity=task["actual_quantity"],
                                          reviewed_quantity=task["actual_quantity"], review_date=date.today().isoformat(), note=task.get("note", "")); self.refresh()

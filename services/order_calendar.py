@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 import math
 import os
 import shutil
@@ -136,23 +137,70 @@ class OrderCalendar:
         self.save()
         return plan
 
+    @staticmethod
+    def schedule_definition_changed(old: dict, new: dict) -> bool:
+        return any(old.get(key) != new.get(key) for key in
+                   ("start_date", "initial_completed_quantity", "stages"))
+
+    def _candidate_plan(self, plan: dict, changes: dict) -> dict:
+        candidate = deepcopy(plan)
+        candidate.update(deepcopy(changes))
+        candidate["id"] = plan["id"]
+        if self.schedule_definition_changed(plan, candidate) or (
+                plan.get("status") != "active" and candidate.get("status") == "active"):
+            candidate["effective_date"] = date.today().isoformat()
+        else:
+            if "effective_date" in plan:
+                candidate["effective_date"] = plan["effective_date"]
+            else:
+                candidate.pop("effective_date", None)
+        if self.schedule_definition_changed(plan, candidate):
+            candidate.pop("schedule_completed_occurrences", None)
+        self._validate_plan(candidate, allow_unknown=set(changes) <= {"status"})
+        if candidate["status"] == "active" and self.active_plan(
+                candidate["platform"], candidate["model"], exclude_id=plan["id"]):
+            raise ValueError("该平台和型号已有进行中计划")
+        if plan.get("status") == "ended" and candidate["status"] != "ended":
+            raise ValueError("已结束计划不能恢复，请新增计划")
+        return candidate
+
+    def _commit(self, data: dict) -> None:
+        self.store.save(data)
+        self.data = data
+
     def update_plan(self, plan_id: str, changes: dict) -> dict:
         plan = self.plan(plan_id)
-        yesterday = date.today() - timedelta(days=1)
-        if parse_date(plan["start_date"]) <= yesterday:
-            for task in self.scheduled(plan, parse_date(plan["start_date"]), yesterday):
-                if not self.record_for(plan_id, parse_date(task["date"])):
-                    self.records.append({
+        candidate = self._candidate_plan(plan, changes)
+        if self.schedule_definition_changed(plan, candidate):
+            candidate.pop("schedule_completed_occurrences", None)
+        elif plan.get("status") == "active" and candidate["status"] in {"paused", "ended"}:
+            candidate["schedule_completed_occurrences"] = int(plan.get("schedule_completed_occurrences", 0)) + len(
+                self.scheduled(plan, parse_date(plan["start_date"]), date.today() - timedelta(days=1)))
+        data = deepcopy(self.data)
+        boundary = date.today()
+        revised = self.schedule_definition_changed(plan, candidate)
+        status_changed = plan.get("status") != candidate.get("status")
+        if revised or status_changed:
+            keys = {(r.get("plan_id"), r["date"]) for r in data["records"]}
+            for task in self.scheduled(plan, parse_date(plan["start_date"]), boundary - timedelta(days=1)):
+                if (plan_id, task["date"]) not in keys:
+                    data["records"].append({
                         "id": new_id("record"), "plan_id": plan_id, "date": task["date"], "source": "schedule",
                         "target_quantity": task["target_quantity"], "actual_quantity": 0,
                         "reviewed_quantity": 0, "review_date": None, "note": "",
                     })
-        if {"stages", "start_date", "initial_completed_quantity"} & changes.keys():
-            changes["effective_date"] = date.today().isoformat()
-        plan.update(changes)
-        self._validate_plan(plan, allow_unknown=set(changes) <= {"status"})
-        self.save()
-        return plan
+            data["records"] = [r for r in data["records"] if not (
+                r.get("plan_id") == plan_id and r.get("source", "schedule") == "schedule"
+                and parse_date(r["date"]) >= boundary
+                and not self._record_has_facts(r))]
+        data["plans"] = [candidate if p["id"] == plan_id else p for p in data["plans"]]
+        self._commit(data)
+        return candidate
+
+    @staticmethod
+    def _record_has_facts(record: dict) -> bool:
+        return bool(int(record.get("actual_quantity", 0)) or int(record.get("reviewed_quantity", 0))
+                    or record.get("review_date") or str(record.get("note", "")).strip())
 
     def delete_plan(self, plan_id: str) -> None:
         self.data["plans"] = [item for item in self.plans if item["id"] != plan_id]
@@ -177,43 +225,69 @@ class OrderCalendar:
         parse_date(plan["start_date"])
         if not plan.get("stages"):
             raise ValueError("至少需要一个阶段")
-        for stage in plan["stages"]:
+        if plan.get("status") not in {"active", "paused", "ended"}:
+            raise ValueError("计划状态无效")
+        if int(plan.get("initial_completed_quantity", 0)) < 0:
+            raise ValueError("初始数量不能为负数")
+        running = int(plan.get("initial_completed_quantity", 0))
+        for index, stage in enumerate(plan["stages"]):
             if stage.get("type") not in {"fixed_count", "until_total", "continuous"}:
                 raise ValueError("阶段类型无效")
             if int(stage.get("frequency_days", 0)) < 1 or int(stage.get("target_quantity", 0)) < 1:
                 raise ValueError("频率和目标数量必须大于 0")
+            if stage["type"] == "fixed_count":
+                if int(stage.get("count", 0)) < 1:
+                    raise ValueError("执行次数必须大于 0")
+                running += int(stage["count"]) * int(stage["target_quantity"])
+            elif stage["type"] == "until_total":
+                if int(stage.get("until_total", 0)) <= running:
+                    raise ValueError("累计数量必须大于当前阶段起始累计数量")
+                running = int(stage["until_total"])
+            elif index != len(plan["stages"]) - 1:
+                raise ValueError("持续执行阶段必须作为最后一个阶段")
 
     def record_for(self, plan_id: str, day: date) -> dict | None:
         key = day.isoformat()
         return next((item for item in self.records if item.get("plan_id") == plan_id and item["date"] == key), None)
 
-    def upsert_record(self, plan_id: str | None, day: date, **changes) -> dict:
+    def record(self, record_id: str) -> dict:
+        return next(item for item in self.records if item["id"] == record_id)
+
+    def upsert_record(self, plan_id: str | None, day: date, *, record_id: str | None = None, **changes) -> dict:
         if plan_id:
-            changes.pop("platform", None)
-            changes.pop("custom_platform_name", None)
-            changes.pop("model", None)
-        record = self.record_for(plan_id, day) if plan_id else None
-        if record is None:
-            record = {
-                "id": new_id("record"), "plan_id": plan_id, "date": day.isoformat(),
-                "source": changes.pop("source", "schedule"), "target_quantity": 1,
-                "actual_quantity": 0, "reviewed_quantity": 0, "review_date": None, "note": "",
-            }
-            self.records.append(record)
-        record.update(changes)
+            self.plan(plan_id)
+            for key in ("platform", "custom_platform_name", "model"):
+                changes.pop(key, None)
+        original = self.record(record_id) if record_id else (self.record_for(plan_id, day) if plan_id else None)
+        if original and (original.get("plan_id") != plan_id or original["date"] != day.isoformat()):
+            raise ValueError("记录与任务不匹配")
+        record = deepcopy(original) if original else {
+            "id": new_id("record"), "plan_id": plan_id, "date": day.isoformat(),
+            "source": "schedule" if plan_id else "manual", "target_quantity": 1,
+            "actual_quantity": 0, "reviewed_quantity": 0, "review_date": None, "note": "",
+        }
+        if {"id", "plan_id", "date"} & changes.keys():
+            raise ValueError("不能修改记录标识")
+        record.update(deepcopy(changes))
         if int(record["target_quantity"]) < 1 or int(record["actual_quantity"]) < 0:
             raise ValueError("数量无效")
         record["reviewed_quantity"] = min(max(int(record["reviewed_quantity"]), 0), int(record["actual_quantity"]))
-        self.save()
+        data = deepcopy(self.data)
+        if original:
+            data["records"] = [record if r["id"] == original["id"] else r for r in data["records"]]
+        else:
+            data["records"].append(record)
+        self._commit(data)
         return record
 
     def scheduled(self, plan: dict, start: date, end: date) -> list[dict]:
         if plan.get("status") != "active":
             return []
-        first_date = parse_date(plan.get("effective_date", plan["start_date"]))
+        first_date = max(parse_date(plan["start_date"]), parse_date(plan.get("effective_date", plan["start_date"])))
         last_date: date | None = None
         planned_total = int(plan.get("initial_completed_quantity", 0))
         result: list[dict] = []
+        skipped = int(plan.get("schedule_completed_occurrences", 0))
         for stage in plan["stages"]:
             kind = stage["type"]
             frequency = int(stage["frequency_days"])
@@ -225,6 +299,14 @@ class OrderCalendar:
             else:
                 occurrences = None
 
+            if skipped:
+                consumed = skipped if occurrences is None else min(skipped, occurrences)
+                skipped -= consumed
+                planned_total += consumed * target
+                if occurrences is not None:
+                    occurrences -= consumed
+                    if occurrences == 0:
+                        continue
             current = first_date if last_date is None else last_date + timedelta(days=frequency)
             generated = 0
             while current <= end and (occurrences is None or generated < occurrences):
@@ -253,6 +335,7 @@ class OrderCalendar:
     def _task(self, plan: dict, day: date, target: int) -> dict:
         record = self.record_for(plan["id"], day) or {}
         return {
+            **({"id": record["id"]} if record else {}),
             "plan_id": plan["id"], "date": day.isoformat(), "source": "schedule",
             "platform": plan["platform"], "custom_platform_name": plan.get("custom_platform_name", ""), "model": plan["model"],
             "target_quantity": int(record.get("target_quantity", target)),
@@ -273,6 +356,16 @@ class OrderCalendar:
         return sorted(tasks, key=lambda item: item["date"], reverse=True)
 
     def preview(self, plan: dict, count: int = 10) -> list[dict]:
-        temporary = {**plan, "id": plan.get("id") or "preview", "status": "active"}
-        return self.scheduled(temporary, parse_date(temporary["start_date"]),
-                              parse_date(temporary["start_date"]) + timedelta(days=3650))[:count]
+        existing = next((p for p in self.plans if p["id"] == plan.get("id")), None)
+        temporary = self._candidate_plan(existing, plan) if existing else {
+            **deepcopy(plan), "id": plan.get("id") or "preview", "status": plan.get("status", "active")}
+        start = max(date.today(), parse_date(temporary["start_date"]))
+        # Use the same record cleanup and schedule merge as saving, without writing.
+        calendar = OrderCalendar.__new__(OrderCalendar)
+        calendar.data = deepcopy(self.data)
+        calendar.data["plans"] = [temporary]
+        if existing and self.schedule_definition_changed(existing, temporary):
+            calendar.data["records"] = [r for r in calendar.records if not (
+                r.get("plan_id") == temporary["id"] and r.get("source", "schedule") == "schedule"
+                and parse_date(r["date"]) >= date.today() and not self._record_has_facts(r))]
+        return calendar.scheduled(temporary, start, start + timedelta(days=3650))[:count]

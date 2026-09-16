@@ -129,6 +129,35 @@ class OrderCalendarUiTests(unittest.TestCase):
         record = next(item for item in self.page.calendar_data.records if item.get("plan_id") is None)
         self.assertEqual(("manual", "1688", "A404"), (record["source"], record["platform"], record["model"]))
 
+    def test_manual_edit_complete_review_refreshes_one_record(self):
+        day = date.today()
+        record = self.page.calendar_data.upsert_record(None, day, source="manual", platform="jd", model="A404")
+        dialog = TaskDialog(self.page.calendar_data, day, record, self.page)
+        dialog.note.setText("edited")
+        dialog._save()
+        self.assertEqual(1, len(self.page.calendar_data.records))
+        self.page.complete(self.page.calendar_data.record(record["id"]))
+        self.assertEqual("1", self.page.stats[1].text())
+        self.assertEqual("1", self.page.review_count.text())
+        self.page.mark_reviewed(self.page.calendar_data.record(record["id"]))
+        self.assertEqual(1, len(self.page.calendar_data.records))
+        self.assertEqual("0", self.page.review_count.text())
+        self.assertEqual("edited", self.page.calendar_data.record(record["id"])["note"])
+
+    def test_edit_dialog_preview_and_calendar_use_new_start(self):
+        from unittest.mock import patch
+        with patch("services.order_calendar.date") as clock:
+            clock.today.return_value = date(2026, 9, 16)
+            clock.fromisoformat.side_effect = date.fromisoformat
+            dialog = PlanDialog(self.page.calendar_data, self.page.calendar_data.plan("plan_y35"), self.page)
+            dialog.start_date.setDate(QDate(2026, 9, 17))
+            expected = self.page.calendar_data.preview(dialog.value())
+            dialog._save()
+            self.page.refresh()
+            self.assertNotIn("2026-09-16", self.page.calendar.tasks)
+            self.assertEqual([t["date"] for t in expected], [t["date"] for t in
+                self.page.calendar_data.tasks_between(date(2026, 9, 16), date(2027, 9, 16))[:10]])
+
     def test_pending_review_count_does_not_resize_calendar(self) -> None:
         self.page.resize(1000, 800)
         self.page.show()
