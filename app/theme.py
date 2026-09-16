@@ -59,6 +59,7 @@ QPushButton#dateButton {{ min-width: 40px; max-width: 40px; padding: 0; border-l
 QCalendarWidget#datePickerCalendar {{ background: {SURFACE}; border: 0; }}
 QCalendarWidget#datePickerCalendar QAbstractItemView {{ background: {SURFACE}; color: {TEXT_PRIMARY}; border: 0; outline: 0; selection-background-color: {PRIMARY}; selection-color: white; }}
 QCalendarWidget#datePickerCalendar QHeaderView::section {{ background: {SURFACE}; color: {TEXT_SECONDARY}; border: 0; padding: 5px; }}
+QCalendarWidget#taskCalendar QAbstractItemView {{ outline: 0; selection-background-color: #F0F5FF; selection-color: #1F2937; }}
 QSpinBox::up-button, QSpinBox::down-button {{ width: 28px; border-left: 1px solid {BORDER}; background: {SURFACE_HOVER}; }}
 QSpinBox::up-button {{ subcontrol-position: top right; border-top-right-radius: 7px; }}
 QSpinBox::down-button {{ subcontrol-position: bottom right; border-bottom-right-radius: 7px; border-top: 1px solid {BORDER}; }}

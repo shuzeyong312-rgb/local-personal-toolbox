@@ -3,8 +3,8 @@ from __future__ import annotations
 from datetime import date, timedelta
 from pathlib import Path
 
-from PySide6.QtCore import QDate, QRect, QSettings, Qt, Signal
-from PySide6.QtGui import QColor, QPainter, QPen, QTextCharFormat
+from PySide6.QtCore import QDate, QEvent, QPoint, QRect, QSettings, Qt, Signal
+from PySide6.QtGui import QColor, QFont, QPainter, QPen, QTextCharFormat
 from PySide6.QtWidgets import (
     QAbstractItemView, QApplication, QCalendarWidget, QFrame, QGridLayout, QHBoxLayout, QLabel, QLayout,
     QLineEdit, QPushButton, QScrollArea, QSizePolicy, QTableWidget,
@@ -60,13 +60,20 @@ def platform_combo(value: str = "jd", include_all: bool = False, include_unknown
 class TaskCalendar(QCalendarWidget):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
+        self.setObjectName("taskCalendar")
         self.tasks: dict[str, list[dict]] = {}
+        self._hovered_date = QDate()
+        self._keyboard_focus = False
         self.setNavigationBarVisible(False)
         self.setFirstDayOfWeek(Qt.DayOfWeek.Monday)
         self.setGridVisible(False)
         self.setVerticalHeaderFormat(QCalendarWidget.VerticalHeaderFormat.NoVerticalHeader)
         self.setHorizontalHeaderFormat(QCalendarWidget.HorizontalHeaderFormat.ShortDayNames)
         self.setSelectionMode(QCalendarWidget.SelectionMode.SingleSelection)
+        self._calendar_view = self.findChild(QAbstractItemView)
+        self._calendar_view.installEventFilter(self)
+        self._calendar_view.viewport().installEventFilter(self)
+        self._calendar_view.viewport().setMouseTracking(True)
         weekend = QTextCharFormat()
         weekend.setForeground(QColor(TEXT_SECONDARY))
         self.setWeekdayTextFormat(Qt.DayOfWeek.Saturday, weekend)
@@ -79,17 +86,24 @@ class TaskCalendar(QCalendarWidget):
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         painter.setPen(QPen(QColor(BORDER)))
-        painter.setBrush(QColor("#FFFFFF" if current_month else "#F8FAFC"))
+        selected = value == self.selectedDate()
+        hovered = value == self._hovered_date and not selected
+        painter.setBrush(QColor("#F8FAFC" if hovered or not current_month else "#FFFFFF"))
         painter.drawRoundedRect(rect.adjusted(2, 2, -2, -2), 7, 7)
-        if day == date.today():
+        if day == date.today() and not selected:
             painter.setPen(QPen(QColor(PRIMARY), 2))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRoundedRect(rect.adjusted(2, 2, -2, -2), 7, 7)
-        if value == self.selectedDate():
-            painter.setBrush(QColor("#EAF2FF"))
-            painter.setPen(QPen(QColor(PRIMARY), 1))
-            painter.drawRoundedRect(rect.adjusted(4, 4, -4, -4), 6, 6)
-        painter.setPen(QColor(TEXT_PRIMARY if current_month else "#A1AAB8"))
+        if selected:
+            painter.setBrush(QColor("#F0F5FF"))
+            painter.setPen(QPen(QColor("#B8CCF4")))
+            painter.drawRoundedRect(rect.adjusted(2, 2, -2, -2), 7, 7)
+            if self._keyboard_focus:
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.setPen(QPen(QColor(59, 130, 246, 31), 2))
+                painter.drawRoundedRect(rect.adjusted(0, 0, -1, -1), 8, 8)
+            font = painter.font(); font.setWeight(QFont.Weight.Medium); painter.setFont(font)
+        painter.setPen(QColor("#1F2937" if selected else TEXT_PRIMARY if current_month else "#A1AAB8"))
         painter.drawText(rect.adjusted(9, 6, -7, -5), Qt.AlignmentFlag.AlignTop, str(value.day()))
         if items and current_month:
             statuses = [task_status(item["target_quantity"], item["actual_quantity"], day) for item in items]
@@ -98,6 +112,34 @@ class TaskCalendar(QCalendarWidget):
             painter.drawText(rect.adjusted(9, 8, -8, -8), Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft,
                              f"{marker} {len(items)}")
         painter.restore()
+
+    def eventFilter(self, watched, event) -> bool:
+        if watched is self._calendar_view:
+            if event.type() == QEvent.Type.FocusIn:
+                self._keyboard_focus = event.reason() in (Qt.FocusReason.TabFocusReason, Qt.FocusReason.BacktabFocusReason)
+                self.updateCell(self.selectedDate())
+            elif event.type() == QEvent.Type.FocusOut:
+                self._keyboard_focus = False
+                self.updateCell(self.selectedDate())
+        elif watched is self._calendar_view.viewport():
+            if event.type() == QEvent.Type.MouseMove:
+                hovered = self._date_at(event.position().toPoint())
+                if hovered != self._hovered_date:
+                    previous, self._hovered_date = self._hovered_date, hovered
+                    if previous.isValid(): self.updateCell(previous)
+                    if hovered.isValid(): self.updateCell(hovered)
+            elif event.type() == QEvent.Type.Leave and self._hovered_date.isValid():
+                previous, self._hovered_date = self._hovered_date, QDate()
+                self.updateCell(previous)
+        return super().eventFilter(watched, event)
+
+    def _date_at(self, position: QPoint) -> QDate:
+        index = self._calendar_view.indexAt(position)
+        if not index.isValid() or index.row() == 0:
+            return QDate()
+        first = QDate(self.yearShown(), self.monthShown(), 1)
+        offset = (first.dayOfWeek() - self.firstDayOfWeek().value + 7) % 7
+        return first.addDays(-offset + (index.row() - 1) * 7 + index.column())
 
 
 class PlanDialog(BaseDialog):

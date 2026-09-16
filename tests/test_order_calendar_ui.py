@@ -3,7 +3,8 @@ import unittest
 from datetime import date
 from pathlib import Path
 
-from PySide6.QtCore import QDate, QSettings
+from PySide6.QtCore import QDate, QEvent, QSettings, Qt
+from PySide6.QtGui import QFocusEvent
 from PySide6.QtWidgets import QAbstractItemView, QAbstractSpinBox, QApplication, QScrollArea, QTableWidget
 
 from app.theme import STYLE
@@ -35,6 +36,16 @@ class OrderCalendarUiTests(unittest.TestCase):
         self.assertEqual(date.today(), self.page.selected_day)
         self.assertGreater(self.page.calendar.width(), 0)
         self.assertEqual(("jd", "Y35"), (self.page.calendar.tasks["2026-09-16"][0]["platform"], self.page.calendar.tasks["2026-09-16"][0]["model"]))
+
+    def test_calendar_hover_mapping_and_keyboard_only_focus_ring(self) -> None:
+        view = self.page.calendar._calendar_view
+        september_16 = view.visualRect(view.model().index(3, 2)).center()
+        self.assertEqual(QDate(2026, 9, 16), self.page.calendar._date_at(september_16))
+
+        QApplication.sendEvent(view, QFocusEvent(QEvent.Type.FocusIn, Qt.FocusReason.TabFocusReason))
+        self.assertTrue(self.page.calendar._keyboard_focus)
+        QApplication.sendEvent(view, QFocusEvent(QEvent.Type.FocusIn, Qt.FocusReason.MouseFocusReason))
+        self.assertFalse(self.page.calendar._keyboard_focus)
 
     def test_one_click_completion_and_review_are_saved_immediately(self) -> None:
         task = self.page.calendar_data.tasks_between(date(2026, 9, 16), date(2026, 9, 16))[0]
