@@ -7,7 +7,8 @@ from datetime import datetime
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from services.competitor_monitor import ChromeEnvironment, MonitorStore, PlaywrightCollector
+from services.competitor_monitor import ChromeEnvironment, MonitorStore
+from services.competitor_monitor_collection import PlaywrightCollector
 
 
 def _now() -> str:
