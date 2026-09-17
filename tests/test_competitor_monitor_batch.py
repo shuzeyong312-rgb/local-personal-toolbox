@@ -1,6 +1,7 @@
 import threading
 import time
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -40,6 +41,33 @@ class CompetitorBatchTests(unittest.TestCase):
         self.assertEqual(6, len(results))
         self.assertEqual(MAX_PARALLEL_COLLECTIONS, collector.max_active)
         self.assertLessEqual(collector.max_active, 3)
+
+    def test_batch_context_stays_active_for_entire_parallel_collection(self):
+        events = []
+
+        class Collector:
+            @contextmanager
+            def batch_context(self):
+                events.append("enter")
+                try:
+                    yield
+                finally:
+                    events.append("exit")
+
+            def collect(self, url: str) -> CollectionResult:
+                events.append(f"collect:{url.rsplit('/', 1)[-1]}")
+                return CollectionResult("success", data={})
+
+        competitors = [
+            {"id": index, "url": f"https://detail.1688.com/offer/{index}.html"}
+            for index in range(1, 4)
+        ]
+        results = list(collect_batch(competitors, Collector()))
+
+        self.assertEqual(3, len(results))
+        self.assertEqual("enter", events[0])
+        self.assertEqual("exit", events[-1])
+        self.assertEqual(3, len([item for item in events if item.startswith("collect:")]))
 
     def test_interactive_batch_can_isolate_one_unexpected_item_error(self):
         class Collector:
