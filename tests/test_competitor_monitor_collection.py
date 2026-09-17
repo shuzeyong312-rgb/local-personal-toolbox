@@ -4,6 +4,8 @@ from unittest.mock import patch
 from services.competitor_monitor import CollectionResult
 from services.competitor_monitor_collection import (
     PlaywrightCollector,
+    _is_target_offer_url,
+    _is_verification_probe,
     merge_raw_samples,
     normalize_collection,
 )
@@ -115,6 +117,28 @@ class CompetitorCollectionPolicyTests(unittest.TestCase):
             final = collector.collect(URL)
 
         self.assertEqual("success", final.status)
+        collect_once.assert_called_once_with(URL)
+        sleep.assert_not_called()
+
+    def test_verification_probe_requires_strong_evidence_and_ignores_normal_product(self):
+        self.assertFalse(_is_verification_probe({"normal_product": True, "phrases": ["安全验证"]}))
+        self.assertFalse(_is_verification_probe({"normal_product": False, "access_abnormal": True}))
+        self.assertTrue(_is_verification_probe({"normal_product": False, "phrases": ["请完成验证"]}))
+        self.assertTrue(_is_verification_probe({"normal_product": False, "selectors": ["[class*=captcha]"], "risk_url": True}))
+
+    def test_verification_recovery_requires_the_original_offer_not_home_page(self):
+        self.assertTrue(_is_target_offer_url(URL, URL))
+        self.assertFalse(_is_target_offer_url("https://www.1688.com/", URL))
+        self.assertFalse(_is_target_offer_url("https://detail.1688.com/offer/1.html", URL))
+
+    def test_needs_verification_never_uses_normal_retry(self):
+        collector = PlaywrightCollector()
+        verification = CollectionResult("needs_verification")
+        with patch.object(collector, "_collect_once", return_value=verification) as collect_once, \
+             patch("services.competitor_monitor_collection.time.sleep") as sleep:
+            result = collector.collect(URL)
+
+        self.assertEqual("needs_verification", result.status)
         collect_once.assert_called_once_with(URL)
         sleep.assert_not_called()
 

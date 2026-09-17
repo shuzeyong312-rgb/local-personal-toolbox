@@ -50,6 +50,26 @@ CREATE_NO_WINDOW = 0x08000000
 CAROUSEL_SAMPLE_COUNT = 4
 CAROUSEL_SAMPLE_INTERVAL_MS = 800
 
+# Verification probe is kept separate from the normal extractor. It has no interactions.
+VERIFICATION_PROBE = """() => {
+  const visible = e => e && e.getClientRects().length && getComputedStyle(e).visibility !== 'hidden';
+  const bodyText = (document.body?.innerText || '').replace(/\\s+/g, ' ').slice(0, 30000);
+  const explicitPhrases = ['请完成验证', '安全验证', '验证后继续', '滑块验证', '滑动验证', '人机验证'];
+  const matchedPhrases = explicitPhrases.filter(value => bodyText.includes(value));
+  const accessAbnormal = bodyText.includes('访问异常');
+  const selectors = [
+    '[class*="captcha" i]', '[id*="captcha" i]', '[src*="captcha" i]',
+    '[class*="slider" i]', '[id*="slider" i]', '[class*="verify" i]', '[id*="verify" i]'
+  ].filter(selector => document.querySelector(selector));
+  const riskUrl = /(?:captcha|verify|security|risk|safe)/i.test(location.href);
+  const title = Array.from(document.querySelectorAll('.title-content h1')).find(visible);
+  const price = Array.from(document.querySelectorAll('.price-component .price-info')).find(visible);
+  const normalProduct = Boolean(title && price);
+  return {normal_product: normalProduct,
+    url: location.href, phrases: matchedPhrases, access_abnormal: accessAbnormal,
+    selectors, risk_url: riskUrl};
+}"""
+
 
 def _monitor_chrome_pids(profile: Path) -> set[int]:
     """Return Chrome process ids that belong to the dedicated monitor profile."""
@@ -202,6 +222,26 @@ def _usable(value) -> bool:
     return value not in (None, "", "unavailable", [], {})
 
 
+def _is_target_offer_url(current_url: str, target_url: str) -> bool:
+    current = urlparse(current_url)
+    target = urlparse(target_url)
+    return (
+        current.netloc.lower() == "detail.1688.com"
+        and current.path.rstrip("/") == target.path.rstrip("/")
+        and current.path.startswith("/offer/")
+    )
+
+
+def _is_verification_probe(probe: dict) -> bool:
+    challenge_dom = bool(probe.get("selectors"))
+    risk_url = bool(probe.get("risk_url"))
+    return not probe.get("normal_product") and bool(
+        probe.get("phrases")
+        or (probe.get("access_abnormal") and (challenge_dom or risk_url))
+        or (challenge_dom and risk_url)
+    )
+
+
 def _pick_first_available(samples: list[dict], section: str, field: str):
     for sample in samples:
         value = sample.get(section, {}).get(field)
@@ -327,6 +367,9 @@ class PlaywrightCollector:
     def __init__(self, cdp_url: str = "http://127.0.0.1:9222", extractor: Path | None = None) -> None:
         self.cdp_url = cdp_url
         self.extractor = extractor or Path(__file__).parents[1] / "tools" / "competitor_monitor" / "extract.js"
+        self._verification_lock = threading.Lock()
+        self._verification_target_url: str | None = None
+        self._verified_target_url: str | None = None
 
     def batch_context(self) -> MonitorChromeWindowGuard:
         return MonitorChromeWindowGuard(ChromeEnvironment.PROFILE)
@@ -338,6 +381,83 @@ class PlaywrightCollector:
         time.sleep(2)
         return self._collect_once(url)
 
+    def _verification_result(self, url: str, probe: dict, page) -> tuple[CollectionResult, bool]:
+        with self._verification_lock:
+            keep_page = self._verification_target_url is None
+            if keep_page:
+                self._verification_target_url = url
+        if keep_page:
+            try:
+                page.bring_to_front()
+            except Exception:
+                pass
+        return CollectionResult(
+            "needs_verification",
+            error="1688需要人工验证，请在专用浏览器中完成验证。",
+            technical_error=json.dumps(
+                {
+                    "target_url": url,
+                    "page_url": probe.get("url", page.url),
+                    "verification": {
+                        "phrases": probe.get("phrases", []),
+                        "access_abnormal": probe.get("access_abnormal", False),
+                        "selectors": probe.get("selectors", []),
+                        "risk_url": probe.get("risk_url", False),
+                    },
+                },
+                ensure_ascii=False,
+            ),
+        ), keep_page
+
+    def wait_for_verification(self, timeout: float = 300, interval: float = 1.5) -> bool:
+        """Wait only after a positive challenge detection; never performs verification actions."""
+        with self._verification_lock:
+            target_url = self._verification_target_url
+        if not target_url:
+            return False
+
+        deadline = time.monotonic() + timeout
+        try:
+            from playwright.sync_api import sync_playwright
+
+            with sync_playwright() as pw:
+                browser = pw.chromium.connect_over_cdp(self.cdp_url, timeout=5000)
+                while time.monotonic() < deadline:
+                    for context in browser.contexts:
+                        for page in context.pages:
+                            try:
+                                probe = page.evaluate(VERIFICATION_PROBE)
+                            except Exception:
+                                continue
+                            if (
+                                not _is_verification_probe(probe)
+                                and _is_target_offer_url(page.url, target_url)
+                            ):
+                                with self._verification_lock:
+                                    self._verification_target_url = None
+                                    self._verified_target_url = target_url
+                                return True
+                    time.sleep(interval)
+        except Exception:
+            return False
+        return False
+
+    def abandon_verification(self) -> None:
+        with self._verification_lock:
+            self._verification_target_url = None
+            self._verified_target_url = None
+
+    def verification_target_url(self) -> str | None:
+        with self._verification_lock:
+            return self._verified_target_url or self._verification_target_url
+
+    def _verified_page(self, context, url: str):
+        with self._verification_lock:
+            if self._verified_target_url != url:
+                return None
+            self._verified_target_url = None
+        return next((page for page in context.pages if _is_target_offer_url(page.url, url)), None)
+
     def _collect_once(self, url: str) -> CollectionResult:
         try:
             from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, sync_playwright
@@ -347,15 +467,23 @@ class PlaywrightCollector:
                 if not browser.contexts:
                     raise RuntimeError("Chrome没有可用上下文")
 
-                page = browser.contexts[0].new_page()
+                page = self._verified_page(browser.contexts[0], url) or browser.contexts[0].new_page()
+                keep_verification_page = False
                 try:
-                    response = page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    response = None if _is_target_offer_url(page.url, url) else page.goto(
+                        url, wait_until="domcontentloaded", timeout=30000
+                    )
                     if response and response.status == 404:
                         return CollectionResult(
                             "failed",
                             error="1688商品不存在或已下架",
                             technical_error=f"HTTP 404: {url}",
                         )
+
+                    probe = page.evaluate(VERIFICATION_PROBE)
+                    if _is_verification_probe(probe):
+                        result, keep_verification_page = self._verification_result(url, probe, page)
+                        return result
 
                     try:
                         page.wait_for_function(
@@ -370,7 +498,10 @@ class PlaywrightCollector:
                         )
                         page.wait_for_timeout(1200)
                     except PlaywrightTimeoutError:
-                        pass
+                        probe = page.evaluate(VERIFICATION_PROBE)
+                        if _is_verification_probe(probe):
+                            result, keep_verification_page = self._verification_result(url, probe, page)
+                            return result
 
                     extractor = self.extractor.read_text(encoding="utf-8")
                     samples = []
@@ -381,7 +512,8 @@ class PlaywrightCollector:
                     raw = merge_raw_samples(samples)
                     final_url = page.url
                 finally:
-                    page.close()
+                    if not keep_verification_page:
+                        page.close()
 
             if raw.get("login_evidence_raw") or "login" in urlparse(final_url).path.lower():
                 return CollectionResult(

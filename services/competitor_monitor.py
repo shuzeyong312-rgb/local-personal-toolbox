@@ -375,6 +375,12 @@ class MonitorStore:
         )
         self.db.commit()
 
+    def update_run_status(self, run_id: int, status: str, error: str | None = None) -> None:
+        self.db.execute(
+            "UPDATE monitor_runs SET status=?,error_summary=? WHERE id=?", (status, error, run_id)
+        )
+        self.db.commit()
+
     def latest_run(self) -> sqlite3.Row | None:
         return self.db.execute("SELECT * FROM monitor_runs ORDER BY id DESC LIMIT 1").fetchone()
 

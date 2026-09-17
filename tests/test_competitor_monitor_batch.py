@@ -90,6 +90,37 @@ class CompetitorBatchTests(unittest.TestCase):
         self.assertEqual("success", results[1].status)
         self.assertEqual("success", results[3].status)
 
+    def test_verification_stops_replenishing_and_stops_window_guard(self):
+        class Guard:
+            stopped = False
+
+            def __enter__(self): return self
+            def __exit__(self, *_args): pass
+            def stop(self): self.stopped = True
+
+        class Collector:
+            def __init__(self):
+                self.guard = Guard()
+                self.started = []
+
+            def batch_context(self): return self.guard
+
+            def collect(self, url: str) -> CollectionResult:
+                self.started.append(url)
+                if url.endswith("/1.html"):
+                    return CollectionResult("needs_verification")
+                time.sleep(0.05)
+                return CollectionResult("success", data={})
+
+        collector = Collector()
+        competitors = [{"id": index, "url": f"https://detail.1688.com/offer/{index}.html"} for index in range(1, 6)]
+
+        results = list(collect_batch(competitors, collector, max_workers=3))
+
+        self.assertEqual([(1, "needs_verification")], [(item["id"], result.status) for item, result in results])
+        self.assertTrue(collector.guard.stopped)
+        self.assertLessEqual(len(collector.started), 3)
+
     def test_monitor_chrome_starts_minimized_but_manual_open_stays_visible(self):
         environment = BackgroundChromeEnvironment()
         chrome = Path("C:/Chrome/chrome.exe")

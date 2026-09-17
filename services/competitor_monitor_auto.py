@@ -9,7 +9,12 @@ from xml.sax.saxutils import escape
 
 from services.competitor_monitor import MonitorStore
 from services.competitor_monitor_batch import MAX_PARALLEL_COLLECTIONS, collect_batch
-from services.competitor_monitor_window import BackgroundChromeEnvironment, PlaywrightCollector
+from services.competitor_monitor_window import (
+    BackgroundChromeEnvironment,
+    PlaywrightCollector,
+    park_monitor_chrome,
+    restore_monitor_chrome,
+)
 
 
 def _now() -> str:
@@ -86,20 +91,72 @@ class AutoMonitor:
             return "environment_failed"
         first_event = self.store.latest_event_id()
         counts = {"success": 0, "partial": 0, "failed": 0}
-        parallel = min(MAX_PARALLEL_COLLECTIONS, max(1, len(competitors)))
+        pending = list(competitors)
+        verification_count = 0
+        post_verification_successes = 0
 
         try:
-            results = collect_batch(competitors, self.collector, max_workers=parallel)
-            for competitor, result in results:
-                if result.environment_error:
-                    self.store.finish_run(run_id, "environment_failed", **counts,
-                                          error=result.technical_error or result.error, now=_now())
-                    if self.notification_enabled: self.notifier("1688竞品监控自动采集失败", result.error)
-                    return "environment_failed"
-                counts[result.status] += 1
-                self.store.save_collection(competitor["id"], result,
-                                           price_threshold=self.price_threshold,
-                                           sales_threshold=self.sales_threshold)
+            while pending:
+                serial_recovery = verification_count and post_verification_successes < 2
+                parallel = 1 if serial_recovery else min(MAX_PARALLEL_COLLECTIONS, len(pending))
+                batch = collect_batch(pending, self.collector, max_workers=parallel)
+                verification_item = None
+                try:
+                    for competitor, result in batch:
+                        if result.status == "needs_verification":
+                            verification_item = competitor
+                            break
+                        if result.environment_error:
+                            self.store.finish_run(run_id, "environment_failed", **counts,
+                                                  error=result.technical_error or result.error, now=_now())
+                            if self.notification_enabled: self.notifier("1688竞品监控自动采集失败", result.error)
+                            return "environment_failed"
+                        counts[result.status] += 1
+                        pending = [item for item in pending if item["id"] != competitor["id"]]
+                        self.store.save_collection(competitor["id"], result,
+                                                   price_threshold=self.price_threshold,
+                                                   sales_threshold=self.sales_threshold)
+                        if serial_recovery and result.status == "success":
+                            post_verification_successes += 1
+                            if post_verification_successes >= 2:
+                                break
+                finally:
+                    if verification_item is None:
+                        batch.close()
+
+                if verification_item is None:
+                    continue
+
+                verification_count += 1
+                restore_monitor_chrome(BackgroundChromeEnvironment.PROFILE)
+                if verification_count >= 2:
+                    message = "1688再次需要人工验证，本轮采集已暂停，请稍后再试。"
+                    if self.notification_enabled: self.notifier("1688竞品监控已暂停", message)
+                    abandon = getattr(self.collector, "abandon_verification", None)
+                    if callable(abandon): abandon()
+                    batch.close()
+                    self.store.finish_run(run_id, "verification_repeated", **counts, error=message, now=_now())
+                    return "verification_repeated"
+
+                message = "1688需要人工验证，请在专用浏览器中完成验证。验证通过后将自动继续采集。"
+                self.store.update_run_status(run_id, "needs_verification", message)
+                if self.notification_enabled: self.notifier("1688需要人工验证", message)
+                wait_for_verification = getattr(self.collector, "wait_for_verification", None)
+                verified = callable(wait_for_verification) and wait_for_verification(timeout=300, interval=1.5)
+                batch.close()
+                if not verified:
+                    message = "人工验证等待超时，本轮采集已暂停"
+                    if self.notification_enabled: self.notifier("1688竞品监控已暂停", message)
+                    abandon = getattr(self.collector, "abandon_verification", None)
+                    if callable(abandon): abandon()
+                    self.store.finish_run(run_id, "verification_timeout", **counts, error=message, now=_now())
+                    return "verification_timeout"
+
+                park_monitor_chrome(BackgroundChromeEnvironment.PROFILE)
+                target_url = getattr(self.collector, "verification_target_url", lambda: None)()
+                if isinstance(target_url, str):
+                    pending.sort(key=lambda item: item["url"] != target_url)
+                post_verification_successes = 0
         except Exception as exc:
             self.store.finish_run(run_id, "failed", **counts, error=str(exc), now=_now())
             if self.notification_enabled: self.notifier("1688竞品监控自动采集失败", str(exc))

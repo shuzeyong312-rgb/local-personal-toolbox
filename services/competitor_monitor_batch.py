@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from contextlib import nullcontext
 
 from services.competitor_monitor import CollectionResult
@@ -34,41 +34,73 @@ def collect_batch(
 
     worker_count = max(1, min(int(max_workers), MAX_PARALLEL_COLLECTIONS, len(items)))
     batch_context = getattr(collector, "batch_context", None)
-    context = batch_context() if callable(batch_context) else nullcontext()
+    candidate_context = batch_context() if callable(batch_context) else None
+    context = candidate_context if hasattr(candidate_context, "__enter__") else nullcontext()
 
     with context:
         executor = ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="1688-monitor")
         futures: dict[Future, dict] = {}
 
+        iterator = iter(items)
+
+        def submit_next() -> bool:
+            if cancelled and cancelled():
+                return False
+            try:
+                item = next(iterator)
+            except StopIteration:
+                return False
+            futures[executor.submit(collector.collect, item["url"])] = item
+            return True
+
         try:
-            for item in items:
-                if cancelled and cancelled():
+            for _ in range(worker_count):
+                if not submit_next():
                     break
-                futures[executor.submit(collector.collect, item["url"])] = item
 
-            for future in as_completed(futures):
+            while futures:
                 if cancelled and cancelled():
                     _cancel_pending(futures)
                     break
-
-                item = futures[future]
-                if isolate_errors:
-                    try:
+                done, _ = wait(futures, return_when=FIRST_COMPLETED)
+                completed: list[tuple[dict, CollectionResult]] = []
+                for future in done:
+                    item = futures.pop(future)
+                    if cancelled and cancelled():
+                        _cancel_pending(futures)
+                        return
+                    if isolate_errors:
+                        try:
+                            result = future.result()
+                        except Exception as exc:
+                            result = CollectionResult(
+                                "failed",
+                                error="1688页面采集失败",
+                                technical_error=str(exc),
+                            )
+                    else:
                         result = future.result()
-                    except Exception as exc:
-                        result = CollectionResult(
-                            "failed",
-                            error="1688页面采集失败",
-                            technical_error=str(exc),
-                        )
-                else:
-                    result = future.result()
 
-                yield item, result
+                    completed.append((item, result))
 
-                if result.environment_error:
+                verification = next(
+                    ((item, result) for item, result in completed if result.status == "needs_verification"), None
+                )
+                if verification:
+                    stop = getattr(context, "stop", None)
+                    if callable(stop):
+                        stop()
                     _cancel_pending(futures)
-                    break
+                    yield verification
+                    return
+
+                for item, result in completed:
+                    yield item, result
+
+                    if result.environment_error:
+                        _cancel_pending(futures)
+                        return
+                    submit_next()
         finally:
             if cancelled and cancelled():
                 _cancel_pending(futures)

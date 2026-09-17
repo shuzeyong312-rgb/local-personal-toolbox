@@ -639,6 +639,8 @@ class CompetitorMonitorPage(QWidget):
         self.worker.current.connect(lambda index, total, _id, name: (self.progress.update_progress(index - 1, total), self.progress.set_current(index, total, name)))
         self.worker.item_completed.connect(self._save_result)
         self.worker.environment_failed.connect(self._environment_failed)
+        self.worker.verification_required.connect(self._verification_required)
+        self.worker.verification_stopped.connect(self._verification_stopped)
         self.worker.completed.connect(self._collection_finished)
         self.worker.start(); self.progress.show()
 
@@ -656,6 +658,21 @@ class CompetitorMonitorPage(QWidget):
         self.store.finish_run(self.run_id, status, success, partial, failed)
         MessageDialog("采集已取消" if cancelled else "采集完成",
                       f"成功 {success}　部分异常 {partial}　失败 {failed}\n已完成的数据均已保存。", self).exec()
+
+    def _verification_required(self, message: str) -> None:
+        self.store.update_run_status(self.run_id, "needs_verification", message)
+        self.progress.set_state("等待人工完成1688验证")
+        self._verification_dialog = MessageDialog("需要人工验证", message, self)
+        self._verification_dialog.setModal(False)
+        self._verification_dialog.show()
+
+    def _verification_stopped(self, message: str, status: str, success: int, partial: int, failed: int) -> None:
+        if getattr(self, "_verification_dialog", None):
+            self._verification_dialog.close()
+            self._verification_dialog = None
+        self.progress.accept(); self.refresh()
+        self.store.finish_run(self.run_id, status, success, partial, failed, error=message)
+        MessageDialog("采集已暂停", message, self).exec()
 
     def _environment_failed(self, error: str, technical_error: str) -> None:
         self.progress.accept(); self.store.finish_run(self.run_id, "environment_failed", error=technical_error or error); self.refresh()
