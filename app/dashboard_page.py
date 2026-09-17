@@ -2,267 +2,159 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QGridLayout, QHBoxLayout, QLabel, QScrollArea, QSizePolicy, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtCore import QSettings, Qt
+from PySide6.QtWidgets import QButtonGroup, QGridLayout, QHBoxLayout, QLabel, QScrollArea, QVBoxLayout, QWidget
 
-from app.icons import icon
 from app.tool_registry import TOOL_REGISTRY, ToolDefinition
-
-
-class ToolCard(QToolButton):
-    _ICON_COLORS = {
-        "图片工具": ("#2563EB", "#EBF3FF"),
-        "文件工具": ("#7C5CE0", "#F1EEFF"),
-        "电商运营": ("#12966F", "#EAF8F3"),
-    }
-
-    def __init__(self, tool: ToolDefinition) -> None:
-        super().__init__(objectName="toolCard")
-        self.tool = tool
-        self.setProperty("size", tool.card_size)
-        self.setProperty("featured", tool.featured)
-        self.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
-        self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.setMinimumHeight({"large": 254, "medium": 122, "small": 112}[tool.card_size])
-        self.setToolTip(f"打开{tool.name}")
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(16, 15, 16, 14)
-        layout.setSpacing(6)
-        header = QHBoxLayout()
-        header.setSpacing(8)
-        icon_color, icon_background = self._ICON_COLORS[tool.category]
-        icon_label = QLabel(objectName="toolCardIcon")
-        icon_label.setProperty("category", tool.category)
-        icon_label.setPixmap(icon(tool.icon, icon_color, 18).pixmap(18, 18))
-        icon_label.setStyleSheet(f"background: {icon_background};")
-        header.addWidget(icon_label)
-        header.addWidget(QLabel(tool.category, objectName="toolCardCategory"))
-        header.addStretch()
-        header.addWidget(QLabel("↗", objectName="toolCardArrow"))
-        layout.addLayout(header)
-        layout.addWidget(QLabel(tool.name, objectName="toolCardTitle"))
-        description = QLabel(tool.description, objectName="toolCardDescription")
-        description.setWordWrap(True)
-        description.setMaximumHeight(32)
-        layout.addWidget(description)
-        layout.addStretch(1)
-        preview = self._preview()
-        preview.setFixedHeight({"large": 70, "medium": 56, "small": 48}[tool.card_size])
-        layout.addWidget(preview)
-
-    @staticmethod
-    def _text(text: str, name: str) -> QLabel:
-        label = QLabel(text, objectName=name)
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        return label
-
-    def _preview(self) -> QWidget:
-        preview = QFrame(objectName="toolPreview")
-        preview.setProperty("kind", self.tool.id)
-        builders = {
-            "watermark": self._watermark_preview,
-            "resize": self._resize_preview,
-            "background_remove": self._background_preview,
-            "compression": self._compression_preview,
-            "conversion": self._conversion_preview,
-            "rename": self._rename_preview,
-            "order_calendar": self._calendar_preview,
-            "competitor_monitor": self._monitor_preview,
-        }
-        builders[self.tool.id](preview)
-        return preview
-
-    def _watermark_preview(self, preview: QFrame) -> None:
-        layout = QHBoxLayout(preview)
-        layout.setContentsMargins(9, 8, 10, 8)
-        layout.setSpacing(10)
-        thumbnail = QFrame(objectName="previewPhoto")
-        thumb_layout = QVBoxLayout(thumbnail)
-        thumb_layout.setContentsMargins(0, 0, 0, 0)
-        thumb_layout.addWidget(self._text("TEXT", "previewWatermark"))
-        layout.addWidget(thumbnail, 1)
-        values = QVBoxLayout()
-        values.setSpacing(1)
-        values.addWidget(QLabel("文字水印", objectName="previewCaption"))
-        values.addWidget(QLabel("Opacity 50%", objectName="previewMetric"))
-        layout.addLayout(values, 1)
-
-    def _resize_preview(self, preview: QFrame) -> None:
-        layout = QHBoxLayout(preview)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(8)
-        layout.addWidget(self._text("1200 × 800", "previewDimension"), 1)
-        layout.addWidget(self._text("↓", "previewArrow"))
-        layout.addWidget(self._text("800 × 533", "previewDimension"), 1)
-
-    def _background_preview(self, preview: QFrame) -> None:
-        layout = QHBoxLayout(preview)
-        layout.setContentsMargins(10, 7, 10, 7)
-        layout.setSpacing(8)
-        before = QFrame(objectName="previewWhiteTile")
-        before.setFixedSize(28, 28)
-        layout.addWidget(before)
-        layout.addWidget(self._text("→", "previewArrow"))
-        checker = QWidget(objectName="previewChecker")
-        checker.setFixedSize(28, 28)
-        grid = QGridLayout(checker)
-        grid.setContentsMargins(0, 0, 0, 0)
-        grid.setSpacing(0)
-        for row in range(2):
-            for column in range(2):
-                cell = QFrame(objectName="previewCheckerLight" if (row + column) % 2 else "previewCheckerDark")
-                grid.addWidget(cell, row, column)
-        layout.addWidget(checker)
-        layout.addWidget(QLabel("透明 PNG", objectName="previewCaption"))
-        layout.addStretch()
-
-    def _compression_preview(self, preview: QFrame) -> None:
-        layout = QHBoxLayout(preview)
-        layout.setContentsMargins(11, 8, 11, 8)
-        layout.setSpacing(9)
-        layout.addWidget(self._text("4.8 MB", "previewMetric"))
-        track = QFrame(objectName="previewProgressTrack")
-        track_layout = QHBoxLayout(track)
-        track_layout.setContentsMargins(0, 0, 0, 0)
-        fill = QFrame(objectName="previewProgressFill")
-        fill.setFixedWidth(58)
-        track_layout.addWidget(fill)
-        track_layout.addStretch()
-        layout.addWidget(track, 1)
-        layout.addWidget(self._text("2.1 MB", "previewMetric"))
-
-    def _conversion_preview(self, preview: QFrame) -> None:
-        layout = QHBoxLayout(preview)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(7)
-        layout.addWidget(self._text("JPG", "previewFormat"))
-        layout.addWidget(self._text("→", "previewArrow"))
-        layout.addWidget(self._text("PNG", "previewFormat"))
-        layout.addStretch()
-
-    def _rename_preview(self, preview: QFrame) -> None:
-        layout = QHBoxLayout(preview)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(7)
-        layout.addWidget(self._text("IMG_001", "previewFilename"), 1)
-        layout.addWidget(self._text("↓", "previewArrow"))
-        layout.addWidget(self._text("产品图_001", "previewFilename"), 1)
-
-    def _calendar_preview(self, preview: QFrame) -> None:
-        layout = QHBoxLayout(preview)
-        layout.setContentsMargins(10, 7, 10, 7)
-        layout.setSpacing(7)
-        date_tile = QFrame(objectName="previewDateTile")
-        date_layout = QVBoxLayout(date_tile)
-        date_layout.setContentsMargins(0, 1, 0, 1)
-        date_layout.setSpacing(0)
-        date_layout.addWidget(self._text("SEP", "previewDateMonth"))
-        date_layout.addWidget(self._text("17", "previewDateDay"))
-        layout.addWidget(date_tile)
-        layout.addWidget(QLabel("待评价 3", objectName="previewBadge"))
-        layout.addStretch()
-
-    def _monitor_preview(self, preview: QFrame) -> None:
-        layout = QHBoxLayout(preview)
-        layout.setContentsMargins(10, 8, 10, 8)
-        layout.setSpacing(8)
-        trend = QWidget(objectName="previewTrend")
-        trend_layout = QHBoxLayout(trend)
-        trend_layout.setContentsMargins(0, 0, 0, 0)
-        trend_layout.setSpacing(3)
-        for height in (7, 11, 9, 15):
-            bar = QFrame(objectName="previewTrendBar")
-            bar.setFixedSize(6, height)
-            trend_layout.addWidget(bar, 0, Qt.AlignmentFlag.AlignBottom)
-        layout.addWidget(trend)
-        layout.addWidget(self._text("¥45", "previewMetric"))
-        layout.addWidget(self._text("→", "previewArrow"))
-        layout.addWidget(self._text("¥50", "previewMetric"))
-        layout.addStretch()
+from app.widgets.dashboard import FilterChip, ToolCard
 
 
 class DashboardPage(QWidget):
-    _BENTO_POSITIONS = {
-        "watermark": (0, 0, 2, 2),
-        "resize": (0, 2, 1, 1),
-        "background_remove": (1, 2, 1, 1),
-        "compression": (2, 0, 1, 2),
-        "conversion": (2, 2, 1, 1),
-        "order_calendar": (3, 0, 1, 1),
-        "rename": (3, 1, 1, 1),
-        "competitor_monitor": (3, 2, 1, 1),
-    }
+    """Personal Toolbox home page.
+
+    Dashboard visuals are isolated in app.widgets.dashboard. Business tool pages
+    and factories remain untouched.
+    """
 
     def __init__(self, open_tool: Callable[[str], None]) -> None:
         super().__init__(objectName="dashboardPage")
         self._open_tool = open_tool
+        self._query = ""
+        self._sort_key = "popular"
+        self._columns = 3
+        self._settings = QSettings("Personal Toolbox", "Personal Toolbox")
         self.cards = {tool.id: ToolCard(tool) for tool in TOOL_REGISTRY}
         for tool_id, card in self.cards.items():
-            card.clicked.connect(lambda _checked=False, current=tool_id: self._open_tool(current))
+            card.clicked.connect(lambda _checked=False, current=tool_id: self._launch(current))
         self._build_ui()
-        self._populate_bento()
+        self._refresh_grid()
 
     def _build_ui(self) -> None:
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
+
         scroll = QScrollArea(objectName="dashboardScroll")
         scroll.setWidgetResizable(True)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+
         content = QWidget(objectName="dashboardContent")
         layout = QVBoxLayout(content)
-        layout.setContentsMargins(26, 20, 26, 12)
-        layout.setSpacing(12)
-        title_row = QHBoxLayout()
+        layout.setContentsMargins(32, 18, 32, 112)
+        layout.setSpacing(16)
+
+        heading = QHBoxLayout()
+        heading.setSpacing(18)
         titles = QVBoxLayout()
-        titles.setSpacing(2)
+        titles.setSpacing(3)
         titles.addWidget(QLabel("所有工具", objectName="dashboardTitle"))
         titles.addWidget(QLabel("需要的工具，都在这里。", objectName="dashboardSubtitle"))
-        title_row.addLayout(titles)
-        title_row.addStretch()
-        title_row.addWidget(QLabel(f"{len(TOOL_REGISTRY)} 个工具", objectName="toolCount"))
-        layout.addLayout(title_row)
-        self.grid_host = QWidget()
+        heading.addLayout(titles)
+        heading.addStretch(1)
+
+        controls = QVBoxLayout()
+        controls.setSpacing(6)
+        filter_row = QHBoxLayout()
+        filter_row.setSpacing(7)
+        self.filter_group = QButtonGroup(self)
+        self.filter_group.setExclusive(True)
+        for label, key in (("Popular", "popular"), ("A → Z", "alpha"), ("最近使用", "recent")):
+            chip = FilterChip(label, key)
+            chip.setChecked(key == self._sort_key)
+            chip.clicked.connect(lambda _checked=False, current=key: self._set_sort(current))
+            self.filter_group.addButton(chip)
+            filter_row.addWidget(chip)
+        controls.addLayout(filter_row)
+        self.tool_count = QLabel(objectName="toolCount")
+        self.tool_count.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        controls.addWidget(self.tool_count)
+        heading.addLayout(controls)
+        layout.addLayout(heading)
+
+        self.grid_host = QWidget(objectName="dashboardGridHost")
         self.grid = QGridLayout(self.grid_host)
         self.grid.setContentsMargins(0, 0, 0, 0)
-        self.grid.setHorizontalSpacing(12)
-        self.grid.setVerticalSpacing(12)
-        for column in range(3):
-            self.grid.setColumnStretch(column, 1)
+        self.grid.setHorizontalSpacing(14)
+        self.grid.setVerticalSpacing(14)
         layout.addWidget(self.grid_host)
+
         self.empty = QLabel("没有找到匹配的工具", objectName="dashboardEmpty")
         self.empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.empty.hide()
         layout.addWidget(self.empty)
-        layout.addStretch()
+        layout.addStretch(1)
+
         scroll.setWidget(content)
         outer.addWidget(scroll)
+        self._scroll = scroll
 
     def filter_tools(self, query: str) -> None:
-        normalized = query.strip().casefold()
-        tools = tuple(tool for tool in TOOL_REGISTRY if not normalized or normalized in " ".join((tool.name, tool.description, tool.category)).casefold())
-        self._clear_grid()
-        if normalized:
-            for index, tool in enumerate(tools):
-                card = self.cards[tool.id]
-                card.show()
-                self.grid.addWidget(card, index // 3, index % 3)
+        self._query = query.strip().casefold()
+        self._refresh_grid()
+
+    def _launch(self, tool_id: str) -> None:
+        self._remember_recent(tool_id)
+        self._open_tool(tool_id)
+
+    def _set_sort(self, key: str) -> None:
+        if key == self._sort_key:
+            return
+        self._sort_key = key
+        self._refresh_grid()
+
+    def _recent_ids(self) -> list[str]:
+        value = self._settings.value("dashboard/recent_tools", [])
+        if isinstance(value, str):
+            return [value] if value else []
+        if isinstance(value, (tuple, list)):
+            return [str(item) for item in value if str(item)]
+        return []
+
+    def _remember_recent(self, tool_id: str) -> None:
+        ids = [item for item in self._recent_ids() if item != tool_id]
+        ids.insert(0, tool_id)
+        self._settings.setValue("dashboard/recent_tools", ids[:8])
+        if self._sort_key == "recent":
+            self._refresh_grid()
+
+    def _ordered_tools(self) -> list[ToolDefinition]:
+        tools = list(TOOL_REGISTRY)
+        if self._sort_key == "alpha":
+            tools.sort(key=lambda item: item.name.casefold())
+        elif self._sort_key == "recent":
+            recents = self._recent_ids()
+            rank = {tool_id: index for index, tool_id in enumerate(recents)}
+            tools.sort(key=lambda item: (rank.get(item.id, len(rank) + 1), TOOL_REGISTRY.index(item)))
         else:
-            self._populate_bento()
-        self.empty.setVisible(not tools)
+            tools.sort(key=lambda item: (not item.featured, TOOL_REGISTRY.index(item)))
+        if self._query:
+            tools = [tool for tool in tools if self._query in " ".join((tool.name, tool.description, tool.category)).casefold()]
+        return tools
 
     def _clear_grid(self) -> None:
         while self.grid.count():
-            self.grid.takeAt(0)
-        for card in self.cards.values():
-            card.hide()
+            item = self.grid.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.hide()
 
-    def _populate_bento(self) -> None:
+    def _refresh_grid(self) -> None:
         self._clear_grid()
-        for tool in TOOL_REGISTRY:
-            row, column, row_span, column_span = self._BENTO_POSITIONS[tool.id]
+        tools = self._ordered_tools()
+        for index, tool in enumerate(tools):
             card = self.cards[tool.id]
             card.show()
-            self.grid.addWidget(card, row, column, row_span, column_span)
+            self.grid.addWidget(card, index // self._columns, index % self._columns)
+        for column in range(3):
+            self.grid.setColumnStretch(column, 1 if column < self._columns else 0)
+        self.tool_count.setText(f"{len(tools)} / {len(TOOL_REGISTRY)} 个工具")
+        self.empty.setVisible(not tools)
+        self.grid_host.setVisible(bool(tools))
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        available = self._scroll.viewport().width() if hasattr(self, "_scroll") else self.width()
+        columns = 3 if available >= 900 else 2
+        if columns != self._columns:
+            self._columns = columns
+            self._refresh_grid()

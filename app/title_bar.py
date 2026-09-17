@@ -1,4 +1,5 @@
 from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtGui import QKeySequence, QShortcut
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from app.icons import icon
@@ -8,14 +9,14 @@ from app.tool_registry import ToolDefinition
 class TitleBar(QWidget):
     searchChanged = Signal(str)
     backRequested = Signal()
-    HEIGHT = 56
+    HEIGHT = 78
 
     def __init__(self, window) -> None:
         super().__init__(objectName="titleBar")
         self.host_window = window
         self.setFixedHeight(self.HEIGHT)
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(20, 0, 0, 0)
+        layout.setContentsMargins(38, 14, 0, 10)
         layout.setSpacing(10)
 
         self.back = QPushButton(objectName="headerBackButton")
@@ -37,18 +38,20 @@ class TitleBar(QWidget):
 
         self.search_shell = QFrame(objectName="globalSearchShell")
         search_layout = QHBoxLayout(self.search_shell)
-        search_layout.setContentsMargins(12, 0, 12, 0)
-        search_layout.setSpacing(8)
+        search_layout.setContentsMargins(16, 0, 12, 0)
+        search_layout.setSpacing(9)
         search_icon = QLabel(objectName="searchIcon")
-        search_icon.setPixmap(icon("search", "#71809C", 17).pixmap(17, 17))
+        search_icon.setPixmap(icon("search", "#71809C", 18).pixmap(18, 18))
         search_layout.addWidget(search_icon)
         self.search = QLineEdit(objectName="globalSearch")
         self.search.setPlaceholderText("搜索工具、输入关键词或命令...")
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self.searchChanged)
-        search_layout.addWidget(self.search)
+        search_layout.addWidget(self.search, 1)
+        self.shortcut_badge = QLabel("Ctrl K", objectName="searchShortcutBadge")
+        search_layout.addWidget(self.shortcut_badge)
         layout.addWidget(self.search_shell, 1)
-        layout.addStretch()
+        layout.addStretch(1)
 
         minimize = QPushButton(objectName="windowButton")
         self.maximize = QPushButton(objectName="windowButton")
@@ -67,7 +70,16 @@ class TitleBar(QWidget):
         layout.addWidget(minimize)
         layout.addWidget(self.maximize)
         layout.addWidget(close)
+
+        self.search_shortcut = QShortcut(QKeySequence("Ctrl+K"), window)
+        self.search_shortcut.activated.connect(self.focus_search)
         self.show_dashboard()
+
+    def focus_search(self) -> None:
+        if not self.search_shell.isVisible():
+            self.backRequested.emit()
+        self.search.setFocus(Qt.FocusReason.ShortcutFocusReason)
+        self.search.selectAll()
 
     def show_dashboard(self) -> None:
         self.back.hide()
