@@ -1,0 +1,81 @@
+import threading
+import time
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+from services.competitor_monitor import CollectionResult
+from services.competitor_monitor_batch import MAX_PARALLEL_COLLECTIONS, collect_batch
+from services.competitor_monitor_collection import BackgroundChromeEnvironment
+
+
+class SlowCollector:
+    def __init__(self) -> None:
+        self.lock = threading.Lock()
+        self.active = 0
+        self.max_active = 0
+
+    def collect(self, url: str) -> CollectionResult:
+        with self.lock:
+            self.active += 1
+            self.max_active = max(self.max_active, self.active)
+        try:
+            time.sleep(0.04)
+            return CollectionResult("success", data={"url": url})
+        finally:
+            with self.lock:
+                self.active -= 1
+
+
+class CompetitorBatchTests(unittest.TestCase):
+    def test_batch_collects_multiple_products_concurrently_with_cap_of_three(self):
+        collector = SlowCollector()
+        competitors = [
+            {"id": index, "url": f"https://detail.1688.com/offer/{index}.html"}
+            for index in range(1, 7)
+        ]
+
+        results = list(collect_batch(competitors, collector, max_workers=10))
+
+        self.assertEqual(6, len(results))
+        self.assertEqual(MAX_PARALLEL_COLLECTIONS, collector.max_active)
+        self.assertLessEqual(collector.max_active, 3)
+
+    def test_interactive_batch_can_isolate_one_unexpected_item_error(self):
+        class Collector:
+            def collect(self, url: str) -> CollectionResult:
+                if url.endswith("/2.html"):
+                    raise RuntimeError("broken page")
+                return CollectionResult("success", data={})
+
+        competitors = [
+            {"id": index, "url": f"https://detail.1688.com/offer/{index}.html"}
+            for index in range(1, 4)
+        ]
+        results = dict(
+            (item["id"], result)
+            for item, result in collect_batch(competitors, Collector(), isolate_errors=True)
+        )
+
+        self.assertEqual("failed", results[2].status)
+        self.assertIn("broken page", results[2].technical_error)
+        self.assertEqual("success", results[1].status)
+        self.assertEqual("success", results[3].status)
+
+    def test_monitor_chrome_starts_minimized_but_manual_open_stays_visible(self):
+        environment = BackgroundChromeEnvironment()
+        chrome = Path("C:/Chrome/chrome.exe")
+        with patch.object(environment, "_chrome_path", return_value=chrome), \
+             patch("services.competitor_monitor_collection.subprocess.Popen") as popen, \
+             patch("services.competitor_monitor.ChromeEnvironment._start_chrome") as visible_start:
+            environment._start_chrome()
+            command = popen.call_args.args[0]
+            self.assertIn("--start-minimized", command)
+            self.assertIn("--remote-debugging-port=9222", command)
+
+            environment._start_chrome("https://www.1688.com/")
+            visible_start.assert_called_once_with("https://www.1688.com/")
+
+
+if __name__ == "__main__":
+    unittest.main()
