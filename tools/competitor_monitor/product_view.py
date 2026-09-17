@@ -5,10 +5,14 @@ from dataclasses import dataclass
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QHeaderView, QLabel, QMenu, QTableWidgetItem, QToolButton, QVBoxLayout, QWidget,
+    QHeaderView, QLabel, QMenu, QPushButton, QTableWidgetItem, QToolButton, QVBoxLayout, QWidget,
 )
 
-from tools.competitor_monitor.page import CompetitorMonitorPage as BaseCompetitorMonitorPage
+from tools.competitor_monitor.benchmark import ABBenchmarkDialog
+from tools.competitor_monitor.page import (
+    CompetitorMonitorPage as BaseCompetitorMonitorPage,
+    MessageDialog,
+)
 
 
 MISSING_FIELD_LABELS = {
@@ -199,9 +203,11 @@ class CompetitorMonitorPage(BaseCompetitorMonitorPage):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
+        self._benchmark_dialog = None
         self.only_failed.setText("仅看需关注")
         self.only_failed.setToolTip("显示数据缺失或最近采集失败的商品")
         self._configure_product_table()
+        self._install_benchmark_button()
         for label in self.findChildren(QLabel):
             if label.text() == "采集异常":
                 label.setText("需关注")
@@ -217,6 +223,48 @@ class CompetitorMonitorPage(BaseCompetitorMonitorPage):
         for column, width in enumerate((0, 92, 88, 80, 54, 110, 92, 52)):
             if column:
                 self.table.setColumnWidth(column, width)
+
+    def _install_benchmark_button(self) -> None:
+        collect = self.findChild(QPushButton, "monitorCollect")
+        if not collect or not collect.parentWidget() or not collect.parentWidget().layout():
+            return
+        toolbar = collect.parentWidget().layout()
+        button = QPushButton("A/B测速", objectName="monitorQuiet")
+        button.setToolTip("同一批商品执行串行与3路并行交叉测速；不保存测试快照")
+        button.clicked.connect(self.start_ab_benchmark)
+        index = toolbar.indexOf(collect)
+        if index >= 0:
+            toolbar.insertWidget(index, button)
+        else:
+            toolbar.addWidget(button)
+        self.benchmark_button = button
+
+    def start_ab_benchmark(self) -> None:
+        if self.worker and self.worker.isRunning():
+            MessageDialog("暂时无法测速", "当前正在执行正式采集，请等待采集结束后再进行 A/B 测速。", self).exec()
+            return
+        if self._benchmark_dialog and self._benchmark_dialog.worker.isRunning():
+            self._benchmark_dialog.show()
+            self._benchmark_dialog.raise_()
+            return
+
+        competitors = [
+            dict(row)
+            for row in self.store.competitors(self.group_filter.currentData(), enabled_only=True)
+        ]
+        if len(competitors) < 3:
+            MessageDialog("样本不足", "A/B 测速至少需要当前分组中有 3 个启用的竞品商品。", self).exec()
+            return
+
+        # Six products are enough to expose a real wall-clock difference without turning a
+        # one-off diagnostic into a long or aggressive 1688 crawl. ABBA means 4 passes total.
+        sample = competitors[:6]
+        self._benchmark_dialog = ABBenchmarkDialog(sample, self.cdp.text().strip(), self)
+        self._benchmark_dialog.finished.connect(self._benchmark_closed)
+        self._benchmark_dialog.show()
+
+    def _benchmark_closed(self) -> None:
+        self._benchmark_dialog = None
 
     def refresh(self) -> None:
         rows = self.store.competitors(self.group_filter.currentData())
