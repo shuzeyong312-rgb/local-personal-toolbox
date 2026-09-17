@@ -3,7 +3,7 @@ from __future__ import annotations
 from math import ceil
 
 from PySide6.QtCore import QPointF, QRectF, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
+from PySide6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -35,18 +35,18 @@ class AmbientBackground(QWidget):
         top_right.setColorAt(0.0, QColor(91, 150, 255, 35))
         top_right.setColorAt(0.55, QColor(118, 170, 255, 15))
         top_right.setColorAt(1.0, QColor(247, 249, 253, 0))
-        painter.fillRect(self.rect(), top_right)
+        painter.fillRect(self.rect(), QBrush(top_right))
 
         lower_left = QRadialGradient(QPointF(w * 0.06, h * 0.92), w * 0.58)
         lower_left.setColorAt(0.0, QColor(133, 112, 241, 27))
         lower_left.setColorAt(0.35, QColor(87, 169, 244, 20))
         lower_left.setColorAt(1.0, QColor(247, 249, 253, 0))
-        painter.fillRect(self.rect(), lower_left)
+        painter.fillRect(self.rect(), QBrush(lower_left))
 
         bottom = QLinearGradient(0, h * 0.72, 0, h)
         bottom.setColorAt(0.0, QColor(247, 249, 253, 0))
         bottom.setColorAt(1.0, QColor(216, 233, 255, 26))
-        painter.fillRect(self.rect(), bottom)
+        painter.fillRect(self.rect(), QBrush(bottom))
         painter.end()
         super().paintEvent(event)
 
@@ -110,7 +110,15 @@ class ToolPreview(QWidget):
     @staticmethod
     def _font(painter: QPainter, size: int, weight: int = 500) -> None:
         font = QFont("Segoe UI Variable", size)
-        font.setWeight(QFont.Weight(weight))
+        if weight >= 700:
+            qweight = QFont.Weight.Bold
+        elif weight >= 600:
+            qweight = QFont.Weight.DemiBold
+        elif weight >= 500:
+            qweight = QFont.Weight.Medium
+        else:
+            qweight = QFont.Weight.Normal
+        font.setWeight(qweight)
         painter.setFont(font)
 
     def _text(self, painter: QPainter, rect: QRectF, text: str, color: str = "#65738B",
