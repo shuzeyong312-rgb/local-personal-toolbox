@@ -2,11 +2,15 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 import sqlite3
+import subprocess
+import time
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
+from urllib.parse import urlparse
 
 
 OFFER_URL = re.compile(r"^https://detail\.1688\.com/offer/(\d+)\.html(?:[?#].*)?$")
@@ -29,6 +33,7 @@ def normalize_collection(raw: dict) -> dict:
     product = raw.get("product", {})
     assistant = raw.get("assistant", {})
     skus = raw.get("skus", [])
+    metadata = raw.get("page_metadata", {})
 
     def value(name: str):
         item = product.get(name, assistant.get(name))
@@ -56,6 +61,7 @@ def normalize_collection(raw: dict) -> dict:
         "selected_sku_stock_raw": optional(selected.get("selected_sku_stock_raw") or selected.get("stock_raw")),
         "review_count_raw": value("review_count_raw"),
         "positive_rate_raw": value("positive_rate_raw"),
+        "shop_name": optional(metadata.get("merchant_raw")),
     }
     missing = [name for name in CORE_FIELDS if result[name] in (None, [], "")]
     result["collection_status"] = "partial" if missing else "success"
@@ -86,6 +92,69 @@ class CollectionResult:
     status: str
     data: dict | None = None
     error: str = ""
+    technical_error: str = ""
+    recoverable: bool = False
+    environment_error: bool = False
+
+
+@dataclass
+class EnvironmentResult:
+    ready: bool
+    error: str = ""
+    technical_error: str = ""
+
+
+class ChromeEnvironment:
+    PROFILE = Path(r"C:\1688-monitor-profile")
+
+    def __init__(self, cdp_url: str = "http://127.0.0.1:9222") -> None:
+        self.cdp_url = cdp_url
+
+    def is_ready(self) -> bool:
+        try:
+            with urllib.request.urlopen(f"{self.cdp_url.rstrip('/')}/json/version", timeout=1) as response:
+                return response.status == 200
+        except Exception:
+            return False
+
+    def ensure(self, timeout: float = 15) -> EnvironmentResult:
+        if self.is_ready():
+            return EnvironmentResult(True)
+        try:
+            self._start_chrome()
+        except Exception as exc:
+            return EnvironmentResult(False, "1688采集浏览器启动失败，请检查 Chrome 是否正常安装。", str(exc))
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if self.is_ready():
+                return EnvironmentResult(True)
+            time.sleep(0.25)
+        return EnvironmentResult(False, "1688采集浏览器启动失败，请检查 Chrome 是否正常安装。", f"CDP在{timeout:g}秒内未就绪：{self.cdp_url}")
+
+    def open_browser(self) -> None:
+        self._start_chrome("https://www.1688.com/")
+
+    def _start_chrome(self, url: str | None = None) -> None:
+        chrome = self._chrome_path()
+        args = [str(chrome), "--remote-debugging-port=9222", f"--user-data-dir={self.PROFILE}"]
+        if url:
+            args.extend(["--new-window", url])
+        subprocess.Popen(args)
+
+    @staticmethod
+    def _chrome_path() -> Path:
+        candidates = [
+            Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe"),
+            Path(r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"),
+            Path.home() / r"AppData\Local\Google\Chrome\Application\chrome.exe",
+        ]
+        command = shutil.which("chrome.exe")
+        if command:
+            candidates.append(Path(command))
+        for path in candidates:
+            if path.exists():
+                return path
+        raise FileNotFoundError("未找到 chrome.exe")
 
 
 class MonitorStore:
@@ -143,6 +212,10 @@ class MonitorStore:
                 status TEXT NOT NULL, error_summary TEXT
             );
         """)
+        columns = {row["name"] for row in self.db.execute("PRAGMA table_info(competitors)")}
+        if "shop_name" not in columns:
+            self.db.execute("ALTER TABLE competitors ADD COLUMN shop_name TEXT")
+        self.db.execute("UPDATE competitors SET status='最近采集失败' WHERE status='采集失败'")
         self.db.commit()
 
     def groups(self) -> list[sqlite3.Row]:
@@ -223,22 +296,43 @@ class MonitorStore:
         ).fetchone()
 
     def latest_failure(self, competitor_id: int) -> str | None:
+        details = self.latest_failure_details(competitor_id)
+        return details["error"] if details else None
+
+    def latest_failure_details(self, competitor_id: int) -> dict | None:
         row = self.db.execute(
             """SELECT detail_json FROM events WHERE competitor_id=? AND event_type='collection_failed'
                ORDER BY created_at DESC, id DESC LIMIT 1""", (competitor_id,)
         ).fetchone()
-        return json.loads(row["detail_json"])["error"] if row else None
+        return json.loads(row["detail_json"]) if row else None
+
+    def start_run(self, total: int) -> int:
+        cursor = self.db.execute(
+            """INSERT INTO monitor_runs(started_at,trigger_type,total_count,status)
+               VALUES (?,'manual',?,'preparing_environment')""", (_now(), total)
+        )
+        self.db.commit()
+        return cursor.lastrowid
+
+    def finish_run(self, run_id: int, status: str, success: int = 0, partial: int = 0,
+                   failed: int = 0, error: str | None = None) -> None:
+        self.db.execute(
+            """UPDATE monitor_runs SET finished_at=?,success_count=?,partial_count=?,failed_count=?,
+               status=?,error_summary=? WHERE id=?""",
+            (_now(), success, partial, failed, status, error, run_id),
+        )
+        self.db.commit()
 
     def save_collection(self, competitor_id: int, result: CollectionResult) -> int | None:
         now = _now()
         if result.status == "failed" or not result.data:
             self.db.execute(
-                "UPDATE competitors SET status='采集失败', last_attempt_at=? WHERE id=?", (now, competitor_id)
+                "UPDATE competitors SET status='最近采集失败', last_attempt_at=? WHERE id=?", (now, competitor_id)
             )
             self.db.execute(
                 """INSERT INTO events(competitor_id,event_type,severity,title,detail_json,created_at)
                    VALUES (?,'collection_failed','error','采集失败',?,?)""",
-                (competitor_id, _json({"error": result.error or "未知错误"}), now),
+                (competitor_id, _json({"error": result.error or "未知错误", "technical_error": result.technical_error}), now),
             )
             self.db.commit()
             return None
@@ -274,8 +368,9 @@ class MonitorStore:
         ))
         label = "正常" if status == "success" else "部分异常"
         self.db.execute(
-            "UPDATE competitors SET title=?, status=?, last_success_at=?, last_attempt_at=? WHERE id=?",
-            (data.get("title"), label, now, now, competitor_id),
+            """UPDATE competitors SET title=?, shop_name=COALESCE(?,shop_name), status=?,
+               last_success_at=?, last_attempt_at=? WHERE id=?""",
+            (data.get("title"), data.get("shop_name"), label, now, now, competitor_id),
         )
         self.db.commit()
         return cursor.lastrowid
@@ -287,6 +382,13 @@ class PlaywrightCollector:
         self.extractor = extractor or Path(__file__).parents[1] / "tools" / "competitor_monitor" / "extract.js"
 
     def collect(self, url: str) -> CollectionResult:
+        first = self._collect_once(url)
+        if not first.recoverable:
+            return first
+        time.sleep(2)
+        return self._collect_once(url)
+
+    def _collect_once(self, url: str) -> CollectionResult:
         try:
             from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, sync_playwright
             with sync_playwright() as pw:
@@ -295,7 +397,9 @@ class PlaywrightCollector:
                     raise RuntimeError("Chrome没有可用上下文")
                 page = browser.contexts[0].new_page()
                 try:
-                    page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    response = page.goto(url, wait_until="domcontentloaded", timeout=30000)
+                    if response and response.status == 404:
+                        return CollectionResult("failed", error="1688商品不存在或已下架", technical_error=f"HTTP 404: {url}")
                     try:
                         page.wait_for_function(
                             "() => document.querySelector('.title-content h1') && document.body.innerText.includes('年成交')",
@@ -304,16 +408,34 @@ class PlaywrightCollector:
                     except PlaywrightTimeoutError:
                         pass
                     raw = page.evaluate(self.extractor.read_text(encoding="utf-8"))
+                    final_url = page.url
                 finally:
                     page.close()
+            if raw.get("login_evidence_raw") or "login" in urlparse(final_url).path.lower():
+                return CollectionResult("failed", error="1688登录状态已失效，请在专用Chrome中重新登录后重试。",
+                                        technical_error=_json({"url": final_url, "login_evidence": raw.get("login_evidence_raw", [])}),
+                                        environment_error=True)
             if not raw.get("product_detected"):
-                return CollectionResult("failed", error="1688商品区未正常显示")
+                return CollectionResult("failed", error="商品数据未完整加载",
+                                        technical_error=_json({"url": final_url, "dom": raw.get("dom_structure"),
+                                                               "unavailable": raw.get("unavailable_reasons")}),
+                                        recoverable=True)
             if not raw.get("assistant_detected"):
-                return CollectionResult("failed", error="1688官方采购助手未出现")
+                return CollectionResult("failed", error="官方采购助手未加载",
+                                        technical_error=_json({"url": final_url, "dom": raw.get("dom_structure"),
+                                                               "unavailable": raw.get("unavailable_reasons")}),
+                                        recoverable=True)
             data = normalize_collection(raw)
-            return CollectionResult(data["collection_status"], data=data)
+            return CollectionResult(data["collection_status"], data=data,
+                                    recoverable=data["collection_status"] == "partial" and len(data["missing_fields"]) >= 5)
         except Exception as exc:
-            return CollectionResult("failed", error=str(exc))
+            raw = str(exc)
+            if "connect_over_cdp" in raw or "ECONNREFUSED" in raw or "browser has been closed" in raw:
+                return CollectionResult("failed", error="采集环境未连接", technical_error=raw,
+                                        environment_error=True)
+            deterministic = "ERR_NAME_NOT_RESOLVED" in raw or "HTTP 404" in raw
+            return CollectionResult("failed", error="1688页面加载失败", technical_error=raw,
+                                    recoverable=not deterministic)
 
 
 def _now() -> str:

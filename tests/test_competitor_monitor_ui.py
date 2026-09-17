@@ -30,8 +30,8 @@ class CompetitorMonitorUiTests(unittest.TestCase):
             competitor_id, CollectionResult("success", normalize_collection(complete_raw()))
         )
         self.page.refresh(); self.page.table.selectRow(0); self.page.show_latest()
-        self.assertEqual(("A404", "¥45 / ¥50", "正常"),
-                         tuple(self.page.table.item(0, column).text() for column in (0, 2, 8)))
+        self.assertEqual(("A404", "佛山淘趣科技有限公司", "¥45 / ¥50", "正常"),
+                         tuple(self.page.table.item(0, column).text() for column in (0, 1, 3, 9)))
         self.assertIn("白色", self.page.detail.text())
         self.page.toggle_selected()
         self.assertEqual("暂停", self.page.store.competitor(competitor_id)["status"])

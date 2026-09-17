@@ -8,6 +8,7 @@ from services.competitor_monitor import CollectionResult, MonitorStore, normaliz
 
 def complete_raw():
     return {
+        "page_metadata": {"merchant_raw": "佛山淘趣科技有限公司"},
         "product": {"title": "暖手宝", "price_raw_values": ["¥45", "¥50"], "price_tiers": [],
                     "min_order_qty": "1台起批", "sales_raw": "已售1300+台"},
         "assistant": {"listed_at": "2025-09-16", "month_sales_raw": "20+", "month_distribution_raw": "10+",
@@ -70,12 +71,14 @@ class CompetitorMonitorTests(unittest.TestCase):
             "specification_raw": "unavailable", "price_raw": "unavailable",
             "availability": "unavailable", "stock_raw": "unavailable",
         })
+        raw["page_metadata"]["merchant_raw"] = "unavailable"
         data = normalize_collection(raw)
         self.assertEqual("success", data["collection_status"])
         self.assertEqual((None, None, None, None), (
             data["selected_sku_name"], data["selected_sku_price_raw"],
             data["selected_sku_availability"], data["selected_sku_stock_raw"],
         ))
+        self.assertIsNone(data["shop_name"])
 
     def test_failed_collection_keeps_existing_snapshot(self):
         competitor_id, _ = self.store.add_competitor("https://detail.1688.com/offer/976443859503.html")
@@ -83,7 +86,7 @@ class CompetitorMonitorTests(unittest.TestCase):
         self.store.save_collection(competitor_id, CollectionResult("success", data))
         self.store.save_collection(competitor_id, CollectionResult("failed", error="Chrome无法连接"))
         self.assertIsNotNone(self.store.latest_snapshot(competitor_id))
-        self.assertEqual("采集失败", self.store.competitor(competitor_id)["status"])
+        self.assertEqual("最近采集失败", self.store.competitor(competitor_id)["status"])
         self.assertEqual("Chrome无法连接", self.store.latest_failure(competitor_id))
 
 

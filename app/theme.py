@@ -142,6 +142,9 @@ QLabel#fieldError {{ color: {DANGER}; font-size: 12px; }}
 QLabel#warningText {{ color: {WARNING}; font-size: 12px; }}
 QProgressBar {{ background: #E5EAF1; border: 0; border-radius: 4px; min-height: 8px; max-height: 8px; text-align: center; }}
 QProgressBar::chunk {{ background: {PRIMARY}; border-radius: 4px; }}
+QProgressBar#monitorProgressBar {{ min-height: 26px; max-height: 26px; border-radius: 6px; }}
+QProgressBar#monitorProgressBar::chunk {{ background: #93C5FD; border-radius: 6px; }}
+QLabel#monitorProgressText {{ color: #16345F; font-weight: 700; background: transparent; }}
 QSplitter#workspaceSplitter::handle {{ background: transparent; width: 14px; }}
 QScrollArea {{ border: 0; }}
 QScrollBar:vertical {{ background: transparent; width: 8px; margin: 0; }}
