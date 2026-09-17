@@ -40,15 +40,30 @@
   if(!priceRawValues.length) missing('product.price_raw_values','主采购价格组件没有明确可见价格，返回空列表');
   const product={title:headings.length===1 ? text(headings[0]) : missing('product.title','可见h1不唯一或不存在'),
     price_raw_values:priceRawValues,price_tiers:priceTiers,
-    min_order_qty:'unavailable',sales_raw:'unavailable'};
+    min_order_qty:'unavailable',sales_raw:'unavailable',interest_raw:'unavailable'};
   const minimums=[...new Set(priceComponents.flatMap(e=>
     Array.from(text(e).matchAll(/\d+\s*(?:件|台|个|套|只|盒|箱|包|支|条|瓶|枚|对|本)\s*起批/g),m=>m[0])))];
-  const sales=[...new Set((productScope ? Array.from(productScope.querySelectorAll('*')).filter(visible) : [])
+
+  // 1688 uses the same hero metric slot for rotating values such as “已售20+台” and
+  // “50+人想买”. Capture both independently. A missing sold count is not proof of a
+  // collection failure because the current carousel frame may only expose interest.
+  const metricTexts=[...new Set((productScope ? Array.from(productScope.querySelectorAll('*')).filter(visible) : [])
     .map(text)
     .map(t=>t.replace(/\s+/g,''))
-    .filter(t=>/^已售(?:<|＜)?\d+(?:\.\d+)?(?:万|千)?\+?(?:件|台|个|套|只|盒|箱|包|支|条|瓶|枚|对|本)?$/.test(t)))];
+    .filter(Boolean))];
+  const sales=metricTexts.filter(t=>/^已售(?:<|＜)?\d+(?:\.\d+)?(?:万|千)?\+?(?:件|台|个|套|只|盒|箱|包|支|条|瓶|枚|对|本)?$/.test(t));
+  const interests=metricTexts.filter(t=>/^(?:<|＜)?\d+(?:\.\d+)?(?:万|千)?\+?人想买$/.test(t));
+
   product.min_order_qty=minimums.length===1?minimums[0]:missing('product.min_order_qty','目标商品区域未找到唯一起批量');
-  product.sales_raw=sales.length===1?sales[0]:missing('product.sales_raw','目标商品区域未找到唯一已售计数');
+  product.sales_raw=sales.length===1?sales[0]:missing(
+    'product.sales_raw',
+    interests.length ? '销量/想买轮播位当前显示想买人数，当前帧未显示已售' : '目标商品区域当前未显示已售计数'
+  );
+  product.interest_raw=interests.length===1?interests[0]:missing(
+    'product.interest_raw',
+    sales.length ? '销量/想买轮播位当前显示已售，当前帧未显示想买人数' : '目标商品区域当前未显示想买人数'
+  );
+
   const group=productScope ? Array.from(productScope.querySelectorAll('h3')).find(e=>text(e)==='颜色')?.closest('.feature-item') : null;
   const buttons=group ? Array.from(group.querySelectorAll('button')).filter(visible) : [];
   const rows=productScope ? Array.from(productScope.querySelectorAll('.expand-view-item')).filter(visible) : [];
@@ -62,7 +77,7 @@
     const key='skus['+i+'].';
     return {name:text(button.querySelector('.label-name')),selected:Boolean(current),
       specification_raw:current?text(row.querySelector('.item-label')):missing(key+'specification_raw','未选中颜色，没有对应可见规格行'),
-    price_raw:prices.length===1?text(prices[0]):missing(key+'price_raw',current?'当前SKU价格节点display:none，未当作展示值':'该颜色未展示唯一SKU价格'),
+      price_raw:prices.length===1?text(prices[0]):missing(key+'price_raw',current?'当前SKU价格节点display:none，未当作展示值':'该颜色未展示唯一SKU价格'),
       availability:visible(input) && !input.disabled && visible(plus) && plus.classList.contains('enable') ? 'available' :
         missing(key+'availability','该颜色没有可见可用数量输入及加号控件'),
       stock_raw:current?text(row.querySelector('[i18n="sku-stock"]')):missing(key+'stock_raw','该颜色未展示库存')};
@@ -77,7 +92,8 @@
   return {assistant_detected,product_detected:Boolean(productScope && headings.length===1),
     page_metadata:{merchant_raw:merchantHeadings.length===1?text(merchantHeadings[0]):'unavailable',
       category_raw:category?text(category.querySelector('span')):'unavailable'},
-    dom_structure:{price_value_count:infos.length,color_button_count:buttons.length,visible_spec_row_count:rows.length,selected_color_count:selected.length},
+    dom_structure:{price_value_count:infos.length,color_button_count:buttons.length,visible_spec_row_count:rows.length,
+      selected_color_count:selected.length,sales_candidate_count:sales.length,interest_candidate_count:interests.length},
     login_state:'unavailable',
     login_evidence_raw:nodes.filter(e=>visible(e) && !e.children.length && /登录查看全部规格|登录查看更多优惠/.test(text(e))).map(text),
     product,assistant,skus,
