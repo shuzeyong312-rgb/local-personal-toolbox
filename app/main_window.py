@@ -13,6 +13,7 @@ from tools.conversion.page import ConversionPage
 from tools.resize.page import ResizePage
 from tools.rename.page import RenamePage
 from tools.order_calendar.page import OrderCalendarPage
+from tools.competitor_monitor.page import CompetitorMonitorPage
 from tools.watermark.page import WatermarkPage
 
 
@@ -22,7 +23,7 @@ class MainWindow(QMainWindow):
         ("图片工具", (("批量打水印", "stamp", 0), ("修改图片尺寸", "image", 1), ("白底转透明", "image", 2),
                      ("批量图片压缩", "image", 3), ("图片格式转换", "image", 4))),
         ("文件工具", (("批量重命名", "rename", 5),)),
-        ("电商运营", (("出单日历", "calendar", 6),)),
+        ("电商运营", (("出单日历", "calendar", 6), ("1688竞品监控", "monitor", 7))),
     )
 
     def __init__(self) -> None:
@@ -52,6 +53,7 @@ class MainWindow(QMainWindow):
         self.conversion_page = ConversionPage()
         self.rename_page = RenamePage()
         self.order_calendar_page = OrderCalendarPage()
+        self.competitor_monitor_page = CompetitorMonitorPage()
         self.pages.addWidget(self.watermark_page)
         self.pages.addWidget(self.resize_page)
         self.pages.addWidget(self.background_remove_page)
@@ -59,6 +61,7 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self.conversion_page)
         self.pages.addWidget(self.rename_page)
         self.pages.addWidget(self.order_calendar_page)
+        self.pages.addWidget(self.competitor_monitor_page)
         self.navigation.currentItemChanged.connect(lambda current, _previous: self._activate_navigation(current))
         self._activate_navigation(self.navigation.currentItem())
         main_layout.addWidget(self.pages, 1)
@@ -152,6 +155,8 @@ class MainWindow(QMainWindow):
         self.compression_page.stop_worker()
         self.conversion_page.stop_worker()
         self.rename_page.stop_worker()
+        self.competitor_monitor_page.stop_worker()
+        self.competitor_monitor_page.store.close()
         super().closeEvent(event)
 
 

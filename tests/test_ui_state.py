@@ -81,7 +81,7 @@ class UiStateTests(unittest.TestCase):
             self.assertIn("40 × 30", page.image_info.text())
 
             window = MainWindow()
-            self.assertEqual(["图片工具", "批量打水印", "修改图片尺寸", "白底转透明", "批量图片压缩", "图片格式转换", "文件工具", "批量重命名", "电商运营", "出单日历"],
+            self.assertEqual(["图片工具", "批量打水印", "修改图片尺寸", "白底转透明", "批量图片压缩", "图片格式转换", "文件工具", "批量重命名", "电商运营", "出单日历", "1688竞品监控"],
                              [window.navigation.item(i).text() for i in range(window.navigation.count())])
             window.navigation.setCurrentRow(9)
             self.assertEqual(6, window.pages.currentIndex())
