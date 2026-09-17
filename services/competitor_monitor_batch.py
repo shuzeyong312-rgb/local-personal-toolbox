@@ -15,12 +15,17 @@ def collect_batch(
     *,
     max_workers: int = MAX_PARALLEL_COLLECTIONS,
     cancelled: Callable[[], bool] | None = None,
+    isolate_errors: bool = False,
 ) -> Iterator[tuple[dict, CollectionResult]]:
     """Collect multiple competitors concurrently with a small, bounded worker pool.
 
     Database writes intentionally stay outside this helper. Callers consume results on their
     own thread and persist them serially, avoiding SQLite cross-thread access while still
     allowing the network/browser work to happen in parallel.
+
+    ``isolate_errors`` is used by the interactive worker so one unexpected page exception can
+    be shown as an item failure. Scheduled monitoring keeps it disabled to preserve the prior
+    fail-fast behavior for unexpected collector exceptions.
     """
     items = list(competitors)
     if not items:
@@ -42,16 +47,17 @@ def collect_batch(
                 break
 
             item = futures[future]
-            try:
+            if isolate_errors:
+                try:
+                    result = future.result()
+                except Exception as exc:
+                    result = CollectionResult(
+                        "failed",
+                        error="1688页面采集失败",
+                        technical_error=str(exc),
+                    )
+            else:
                 result = future.result()
-            except Exception as exc:
-                # One broken page must not abort the whole batch. PlaywrightCollector normally
-                # converts page errors to CollectionResult itself; this is the final guard rail.
-                result = CollectionResult(
-                    "failed",
-                    error="1688页面采集失败",
-                    technical_error=str(exc),
-                )
 
             yield item, result
 
