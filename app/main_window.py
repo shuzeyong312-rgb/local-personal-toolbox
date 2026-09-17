@@ -13,7 +13,7 @@ from tools.conversion.page import ConversionPage
 from tools.resize.page import ResizePage
 from tools.rename.page import RenamePage
 from tools.order_calendar.page import OrderCalendarPage
-from tools.competitor_monitor.page import CompetitorMonitorPage
+from tools.competitor_monitor.product_view import CompetitorMonitorPage
 from tools.watermark.page import WatermarkPage
 
 
