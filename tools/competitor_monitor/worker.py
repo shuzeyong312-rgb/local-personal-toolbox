@@ -36,7 +36,6 @@ class CollectionWorker(QThread):
         self.state.emit(f"正在并行采集（最多 {parallel} 个商品同时进行）")
         collector = PlaywrightCollector(self.cdp_url)
 
-        completed_count = 0
         for item, result in collect_batch(
             self.competitors,
             collector,
@@ -49,9 +48,6 @@ class CollectionWorker(QThread):
                 return
 
             counts[result.status] += 1
-            completed_count += 1
-            name = item.get("alias") or item.get("title") or item["offer_id"]
-            self.current.emit(completed_count, total, item["id"], name)
             self.item_completed.emit(item["id"], result)
 
         self.completed.emit(self.cancelled, counts["success"], counts["partial"], counts["failed"])
