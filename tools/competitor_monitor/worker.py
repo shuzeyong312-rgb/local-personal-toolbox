@@ -42,6 +42,7 @@ class CollectionWorker(QThread):
             collector,
             max_workers=parallel,
             cancelled=lambda: self.cancelled,
+            isolate_errors=True,
         ):
             if result.environment_error:
                 self.environment_failed.emit(result.error, result.technical_error)
