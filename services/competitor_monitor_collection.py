@@ -4,6 +4,7 @@ import ctypes
 import json
 import subprocess
 import sys
+import threading
 import time
 from ctypes import wintypes
 from pathlib import Path
@@ -36,7 +37,7 @@ BASIC_FIELDS = (
     "min_order_qty",
 )
 
-SW_MINIMIZE = 6
+SW_FORCEMINIMIZE = 11
 CREATE_NO_WINDOW = 0x08000000
 
 
@@ -77,7 +78,7 @@ def _monitor_chrome_pids(profile: Path) -> set[int]:
 
 
 def _minimize_process_windows(pids: set[int]) -> int:
-    """Minimize visible top-level windows owned by the supplied process ids."""
+    """Force-minimize visible top-level windows owned by the supplied process ids."""
     if not pids or not sys.platform.startswith("win"):
         return 0
 
@@ -91,7 +92,9 @@ def _minimize_process_windows(pids: set[int]) -> int:
         process_id = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
         if process_id.value in pids and user32.IsWindowVisible(hwnd):
-            user32.ShowWindow(hwnd, SW_MINIMIZE)
+            # SW_FORCEMINIMIZE is more reliable than SW_MINIMIZE for another process and
+            # ShowWindowAsync avoids waiting on Chrome's UI thread.
+            user32.ShowWindowAsync(hwnd, SW_FORCEMINIMIZE)
             minimized += 1
         return True
 
@@ -101,25 +104,71 @@ def _minimize_process_windows(pids: set[int]) -> int:
 
 def minimize_monitor_chrome(profile: Path, retries: int = 8, delay: float = 0.25) -> bool:
     """Force an already-running or newly-started monitor Chrome window to the taskbar."""
-    pids = _monitor_chrome_pids(profile)
-    if not pids:
-        return False
     for attempt in range(max(1, retries)):
-        if _minimize_process_windows(pids):
+        pids = _monitor_chrome_pids(profile)
+        if pids and _minimize_process_windows(pids):
             return True
         if attempt + 1 < retries:
             time.sleep(delay)
     return False
 
 
-class BackgroundChromeEnvironment(ChromeEnvironment):
-    """Use the real dedicated Chrome session while keeping its window out of the way.
+class MonitorChromeWindowGuard:
+    """Keep the dedicated Chrome minimized while CDP creates/navigates collection tabs.
 
-    ``--start-minimized`` alone is not reliable when Chrome restores a previous window or is
-    already running. After CDP is ready we therefore locate the dedicated Chrome process and
-    explicitly minimize its top-level Windows window. Manual recovery still opens Chrome
-    visibly so login or verification can be handled by the user.
+    Chrome may restore its window when a new tab/target is created, so minimizing only once
+    before the batch is insufficient. The guard re-applies minimization for the duration of
+    the batch and stops immediately afterwards so normal manual use is unaffected.
     """
+
+    def __init__(self, profile: Path, *, interval: float = 0.2, refresh_pids_every: float = 2.0) -> None:
+        self.profile = profile
+        self.interval = interval
+        self.refresh_pids_every = refresh_pids_every
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def __enter__(self):
+        self.start()
+        return self
+
+    def __exit__(self, _exc_type, _exc, _tb) -> None:
+        self.stop()
+
+    def start(self) -> None:
+        if not sys.platform.startswith("win"):
+            return
+        if self._thread and self._thread.is_alive():
+            return
+        self._stop.clear()
+        self._thread = threading.Thread(
+            target=self._run,
+            name="1688-monitor-window-guard",
+            daemon=True,
+        )
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop.set()
+        if self._thread and self._thread.is_alive() and self._thread is not threading.current_thread():
+            self._thread.join(timeout=1.0)
+        self._thread = None
+
+    def _run(self) -> None:
+        pids: set[int] = set()
+        next_refresh = 0.0
+        while not self._stop.is_set():
+            now = time.monotonic()
+            if not pids or now >= next_refresh:
+                pids = _monitor_chrome_pids(self.profile)
+                next_refresh = now + self.refresh_pids_every
+            if pids:
+                _minimize_process_windows(pids)
+            self._stop.wait(self.interval)
+
+
+class BackgroundChromeEnvironment(ChromeEnvironment):
+    """Use the real dedicated Chrome session while keeping its window out of the way."""
 
     def ensure(self, timeout: float = 15):
         result = super().ensure(timeout)
@@ -147,11 +196,7 @@ def _missing(data: dict, fields: tuple[str, ...]) -> list[str]:
 
 
 def normalize_collection(raw: dict) -> dict:
-    """Classify collection health by monitor-critical fields only.
-
-    Auxiliary analytics fields remain in the snapshot when available, but their absence does
-    not turn an otherwise usable competitor snapshot into a warning state.
-    """
+    """Classify collection health by monitor-critical fields only."""
     data = _legacy_normalize_collection(raw)
     core_missing = _missing(data, MONITOR_FIELDS)
     data["collection_status"] = "partial" if core_missing else "success"
@@ -162,11 +207,14 @@ def normalize_collection(raw: dict) -> dict:
 
 
 class PlaywrightCollector:
-    """1688 collector that waits for the useful page structure and retries core-field gaps once."""
+    """1688 collector that waits for useful page structure and retries core-field gaps once."""
 
     def __init__(self, cdp_url: str = "http://127.0.0.1:9222", extractor: Path | None = None) -> None:
         self.cdp_url = cdp_url
         self.extractor = extractor or Path(__file__).parents[1] / "tools" / "competitor_monitor" / "extract.js"
+
+    def batch_context(self) -> MonitorChromeWindowGuard:
+        return MonitorChromeWindowGuard(ChromeEnvironment.PROFILE)
 
     def collect(self, url: str) -> CollectionResult:
         first = self._collect_once(url)
