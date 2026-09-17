@@ -4,9 +4,9 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from services.competitor_monitor import CollectionResult
+from services.competitor_monitor import CollectionResult, EnvironmentResult
 from services.competitor_monitor_batch import MAX_PARALLEL_COLLECTIONS, collect_batch
-from services.competitor_monitor_collection import BackgroundChromeEnvironment
+from services.competitor_monitor_collection import BackgroundChromeEnvironment, minimize_monitor_chrome
 
 
 class SlowCollector:
@@ -75,6 +75,36 @@ class CompetitorBatchTests(unittest.TestCase):
 
             environment._start_chrome("https://www.1688.com/")
             visible_start.assert_called_once_with("https://www.1688.com/")
+
+    def test_ready_environment_force_minimizes_even_when_chrome_was_already_running(self):
+        environment = BackgroundChromeEnvironment()
+        ready = EnvironmentResult(True)
+        with patch("services.competitor_monitor.ChromeEnvironment.ensure", return_value=ready), \
+             patch("services.competitor_monitor_collection.minimize_monitor_chrome", return_value=True) as minimize:
+            result = environment.ensure()
+
+        self.assertIs(result, ready)
+        minimize.assert_called_once_with(environment.PROFILE)
+
+    def test_failed_environment_does_not_try_to_minimize(self):
+        environment = BackgroundChromeEnvironment()
+        failed = EnvironmentResult(False, "浏览器启动失败", "CDP error")
+        with patch("services.competitor_monitor.ChromeEnvironment.ensure", return_value=failed), \
+             patch("services.competitor_monitor_collection.minimize_monitor_chrome") as minimize:
+            result = environment.ensure()
+
+        self.assertIs(result, failed)
+        minimize.assert_not_called()
+
+    def test_minimize_helper_retries_until_monitor_window_exists(self):
+        with patch("services.competitor_monitor_collection._monitor_chrome_pids", return_value={1234}), \
+             patch("services.competitor_monitor_collection._minimize_process_windows", side_effect=[0, 1]) as minimize, \
+             patch("services.competitor_monitor_collection.time.sleep") as sleep:
+            result = minimize_monitor_chrome(Path("C:/1688-monitor-profile"), retries=3, delay=0.1)
+
+        self.assertTrue(result)
+        self.assertEqual(2, minimize.call_count)
+        sleep.assert_called_once_with(0.1)
 
 
 if __name__ == "__main__":
