@@ -9,7 +9,7 @@ from xml.sax.saxutils import escape
 
 from services.competitor_monitor import MonitorStore
 from services.competitor_monitor_batch import MAX_PARALLEL_COLLECTIONS, collect_batch
-from services.competitor_monitor_collection import BackgroundChromeEnvironment, PlaywrightCollector
+from services.competitor_monitor_window import BackgroundChromeEnvironment, PlaywrightCollector
 
 
 def _now() -> str:
