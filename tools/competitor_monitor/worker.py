@@ -1,7 +1,7 @@
 from PySide6.QtCore import QThread, Signal
 
-from services.competitor_monitor import ChromeEnvironment
-from services.competitor_monitor_collection import PlaywrightCollector
+from services.competitor_monitor_batch import MAX_PARALLEL_COLLECTIONS, collect_batch
+from services.competitor_monitor_collection import BackgroundChromeEnvironment, PlaywrightCollector
 
 
 class CollectionWorker(QThread):
@@ -22,25 +22,35 @@ class CollectionWorker(QThread):
 
     def run(self) -> None:
         self.state.emit("正在准备环境")
-        environment = ChromeEnvironment(self.cdp_url)
+        environment = BackgroundChromeEnvironment(self.cdp_url)
         if not environment.is_ready():
-            self.state.emit("正在启动浏览器")
+            self.state.emit("正在后台启动浏览器")
         ready = environment.ensure()
         if not ready.ready:
             self.environment_failed.emit(ready.error, ready.technical_error)
             return
-        collector = PlaywrightCollector(self.cdp_url)
+
         total = len(self.competitors)
         counts = {"success": 0, "partial": 0, "failed": 0}
-        self.state.emit("正在采集")
-        for index, item in enumerate(self.competitors, 1):
-            if self.cancelled:
-                break
-            self.current.emit(index, total, item["id"], item.get("alias") or item.get("title") or item["offer_id"])
-            result = collector.collect(item["url"])
+        parallel = min(MAX_PARALLEL_COLLECTIONS, total)
+        self.state.emit(f"正在并行采集（最多 {parallel} 个商品同时进行）")
+        collector = PlaywrightCollector(self.cdp_url)
+
+        completed_count = 0
+        for item, result in collect_batch(
+            self.competitors,
+            collector,
+            max_workers=parallel,
+            cancelled=lambda: self.cancelled,
+        ):
             if result.environment_error:
                 self.environment_failed.emit(result.error, result.technical_error)
                 return
+
             counts[result.status] += 1
+            completed_count += 1
+            name = item.get("alias") or item.get("title") or item["offer_id"]
+            self.current.emit(completed_count, total, item["id"], name)
             self.item_completed.emit(item["id"], result)
+
         self.completed.emit(self.cancelled, counts["success"], counts["partial"], counts["failed"])
