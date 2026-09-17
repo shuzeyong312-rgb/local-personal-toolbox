@@ -1,7 +1,7 @@
 import sys
 
 from PySide6.QtCore import QEvent, QSize, Qt
-from PySide6.QtGui import QColor, QCursor
+from PySide6.QtGui import QBrush, QColor, QCursor
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -46,7 +46,7 @@ class MainWindow(QMainWindow):
 
         main = QWidget(objectName="mainArea")
         main_layout = QVBoxLayout(main)
-        main_layout.setContentsMargins(0, 0, 0, 20)
+        main_layout.setContentsMargins(0, 0, 0, 21)
         main_layout.setSpacing(0)
         self.title_bar = TitleBar(self)
         self.title_bar.searchChanged.connect(self._filter_dashboard)
@@ -85,7 +85,7 @@ class MainWindow(QMainWindow):
 
         brand_box = QWidget(objectName="brandBox")
         brand_layout = QHBoxLayout(brand_box)
-        brand_layout.setContentsMargins(6, 0, 5, 20)
+        brand_layout.setContentsMargins(6, 2, 5, 25)
         brand_layout.setSpacing(11)
         brand_layout.addWidget(BrandMark())
         brand_text = QVBoxLayout()
@@ -119,7 +119,7 @@ class MainWindow(QMainWindow):
 
         privacy = QFrame(objectName="privacyCard")
         privacy_layout = QHBoxLayout(privacy)
-        privacy_layout.setContentsMargins(11, 10, 10, 10)
+        privacy_layout.setContentsMargins(11, 11, 10, 11)
         privacy_layout.setSpacing(9)
         privacy_icon = QLabel("●", objectName="privacyIcon")
         privacy_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -127,7 +127,7 @@ class MainWindow(QMainWindow):
         copy = QVBoxLayout()
         copy.setSpacing(1)
         copy.addWidget(QLabel("本地处理", objectName="privacyTitle"))
-        copy.addWidget(QLabel("数据不会离开设备。", objectName="privacyHint"))
+        copy.addWidget(QLabel("数据不会离开设备", objectName="privacyHint"))
         privacy_layout.addLayout(copy, 1)
         privacy_layout.addWidget(QLabel("→", objectName="privacyArrow"))
         column.addWidget(privacy)
@@ -135,8 +135,9 @@ class MainWindow(QMainWindow):
         return sidebar
 
     def _add_navigation_section(self, category: str, count: int) -> None:
-        item = QListWidgetItem()
+        item = QListWidgetItem(category)
         item.setFlags(Qt.ItemFlag.NoItemFlags)
+        item.setForeground(QBrush(Qt.GlobalColor.transparent))
         item.setSizeHint(QSize(180, 31))
         self.navigation.addItem(item)
         row = QWidget(objectName="sidebarSection")
@@ -154,13 +155,13 @@ class MainWindow(QMainWindow):
         dock.setMinimumWidth(390)
         dock.setMaximumWidth(520)
         shadow = QGraphicsDropShadowEffect(dock)
-        shadow.setBlurRadius(30)
-        shadow.setOffset(0, 8)
-        shadow.setColor(QColor(35, 54, 91, 30))
+        shadow.setBlurRadius(34)
+        shadow.setOffset(0, 7)
+        shadow.setColor(QColor(44, 65, 105, 24))
         dock.setGraphicsEffect(shadow)
         dock_layout = QHBoxLayout(dock)
-        dock_layout.setContentsMargins(13, 9, 13, 9)
-        dock_layout.setSpacing(8)
+        dock_layout.setContentsMargins(11, 7, 11, 7)
+        dock_layout.setSpacing(7)
         dock_layout.addStretch(1)
 
         home = self._dock_button("首页", "home", "#FFFFFF", active=True)
@@ -177,12 +178,12 @@ class MainWindow(QMainWindow):
     def _dock_button(label: str, icon_name: str, icon_color: str, active: bool = False) -> QToolButton:
         button = QToolButton(objectName="dockButton")
         button.setProperty("active", active)
-        button.setIcon(icon(icon_name, icon_color, 19))
-        button.setIconSize(QSize(19, 19))
+        button.setIcon(icon(icon_name, icon_color, 18))
+        button.setIconSize(QSize(18, 18))
         button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonIconOnly)
         button.setCursor(Qt.CursorShape.PointingHandCursor)
         button.setToolTip(label)
-        button.setFixedSize(44, 44)
+        button.setFixedSize(40, 40)
         return button
 
     def _activate_navigation(self, item: QListWidgetItem | None) -> None:

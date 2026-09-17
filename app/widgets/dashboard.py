@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QBrush, QColor, QFont, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget
 
 from app.icons import icon
 from app.tool_registry import ToolDefinition
@@ -26,18 +26,28 @@ class AmbientBackground(QWidget):
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
         rect = QRectF(self.rect())
         painter.fillRect(rect, QColor("#F7F9FD"))
-        top = QRadialGradient(QPointF(rect.width() * 0.90, rect.height() * 0.08), rect.width() * 0.48)
-        top.setColorAt(0, QColor(105, 161, 255, 46))
+
+        top = QRadialGradient(QPointF(rect.width() * 0.88, rect.height() * 0.04), rect.width() * 0.62)
+        top.setColorAt(0, QColor(102, 158, 255, 62))
+        top.setColorAt(0.48, QColor(174, 207, 255, 30))
         top.setColorAt(1, QColor(247, 249, 253, 0))
         painter.fillRect(rect, QBrush(top))
-        lower = QRadialGradient(QPointF(rect.width() * 0.08, rect.height() * 0.86), rect.width() * 0.58)
-        lower.setColorAt(0, QColor(144, 126, 244, 34))
-        lower.setColorAt(0.42, QColor(99, 171, 246, 28))
-        lower.setColorAt(1, QColor(247, 249, 253, 0))
-        painter.fillRect(rect, QBrush(lower))
-        bottom = QLinearGradient(0, rect.height() * 0.65, 0, rect.height())
+
+        lower_blue = QRadialGradient(QPointF(rect.width() * 0.02, rect.height() * 0.92), rect.width() * 0.72)
+        lower_blue.setColorAt(0, QColor(105, 174, 255, 46))
+        lower_blue.setColorAt(0.55, QColor(200, 225, 255, 22))
+        lower_blue.setColorAt(1, QColor(247, 249, 253, 0))
+        painter.fillRect(rect, QBrush(lower_blue))
+
+        lower_violet = QRadialGradient(QPointF(rect.width() * 0.14, rect.height() * 1.02), rect.width() * 0.52)
+        lower_violet.setColorAt(0, QColor(166, 135, 245, 43))
+        lower_violet.setColorAt(0.58, QColor(216, 204, 252, 19))
+        lower_violet.setColorAt(1, QColor(247, 249, 253, 0))
+        painter.fillRect(rect, QBrush(lower_violet))
+
+        bottom = QLinearGradient(0, rect.height() * 0.64, 0, rect.height())
         bottom.setColorAt(0, QColor(247, 249, 253, 0))
-        bottom.setColorAt(1, QColor(220, 235, 255, 48))
+        bottom.setColorAt(1, QColor(210, 231, 255, 52))
         painter.fillRect(rect, QBrush(bottom))
 
 
@@ -98,9 +108,9 @@ class ToolPreview(QWidget):
         return font
 
     @staticmethod
-    def _box(p: QPainter, r: QRectF, color: str, radius: float = 7, border: str | None = None) -> None:
-        p.setBrush(QColor(color))
-        p.setPen(QPen(QColor(border), 1) if border else Qt.PenStyle.NoPen)
+    def _box(p: QPainter, r: QRectF, color: str | QColor, radius: float = 7, border: str | QColor | None = None) -> None:
+        p.setBrush(QColor(color) if isinstance(color, str) else color)
+        p.setPen(QPen(QColor(border) if isinstance(border, str) else border, 1) if border else Qt.PenStyle.NoPen)
         p.drawRoundedRect(r, radius, radius)
 
     def _text(self, p: QPainter, r: QRectF, text: str, color="#526175", px=9, bold=False, align=Qt.AlignmentFlag.AlignCenter) -> None:
@@ -112,20 +122,41 @@ class ToolPreview(QWidget):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
         outer = QRectF(0.5, 0.5, self.width() - 1, self.height() - 1)
-        self._box(p, outer, "#F8FAFD", 12, "#EDF1F6")
+        self._box(p, outer, QColor(255, 255, 255, 146), 12, QColor(226, 234, 245, 170))
         r = outer.adjusted(9, 8, -9, -8)
         getattr(self, f"_draw_{self.tool_id}")(p, r)
 
     def _draw_watermark(self, p, r):
-        photo = QRectF(r.left(), r.top(), r.width() * .50, r.height())
+        photo = QRectF(r.left(), r.top(), r.width() * .48, r.height())
         g = QLinearGradient(photo.topLeft(), photo.bottomRight())
-        g.setColorAt(0, QColor("#CCE0FA")); g.setColorAt(1, QColor("#EEF4FB"))
-        p.setPen(Qt.PenStyle.NoPen); p.setBrush(QBrush(g)); p.drawRoundedRect(photo, 8, 8)
-        p.save(); p.translate(photo.center()); p.rotate(-16); self._text(p, QRectF(-photo.width()/2, -10, photo.width(), 20), "SAMPLE WATERMARK", "#4168A6", 8, True); p.restore()
+        g.setColorAt(0, QColor("#CFE5F8"))
+        g.setColorAt(.56, QColor("#E9F2F4"))
+        g.setColorAt(1, QColor("#D8E7D8"))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(g))
+        p.drawRoundedRect(photo, 8, 8)
+        p.setBrush(QColor(255, 255, 255, 215))
+        p.drawRoundedRect(QRectF(photo.center().x() - 11, photo.top() + 14, 22, 31), 6, 6)
+        p.setBrush(QColor("#90A6BB"))
+        p.drawRoundedRect(QRectF(photo.center().x() - 5, photo.top() + 9, 10, 9), 3, 3)
+        p.save()
+        p.translate(photo.center())
+        p.rotate(-17)
+        self._text(p, QRectF(-photo.width() / 2, -8, photo.width(), 16), "SAMPLE WATERMARK", QColor(46, 83, 143, 155), 7, True)
+        p.restore()
+
         info = QRectF(photo.right() + 10, r.top(), r.right() - photo.right() - 10, r.height())
-        self._text(p, QRectF(info.left(), info.top(), info.width(), 18), "Opacity 40%", "#334155", 9, True, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
-        track = QRectF(info.left(), info.top()+27, info.width(), 5); self._box(p, track, "#DEE6F1", 2.5); self._box(p, QRectF(track.left(),track.top(),track.width()*.4,5), "#5A83E8", 2.5)
-        self._text(p, QRectF(info.left(), info.bottom()-15, info.width(), 14), "示意预览", "#9AA6BA", 8, False, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self._text(p, QRectF(info.left(), info.top(), info.width(), 16), "Opacity 40%", "#334155", 9, True, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        track = QRectF(info.left(), info.top() + 25, info.width(), 4)
+        self._box(p, track, "#DFE7F2", 2)
+        self._box(p, QRectF(track.left(), track.top(), track.width() * .4, 4), "#6289E8", 2)
+        p.setBrush(QColor("#FFFFFF"))
+        p.setPen(QPen(QColor("#6289E8"), 1.5))
+        p.drawEllipse(QPointF(track.left() + track.width() * .4, track.center().y()), 4, 4)
+        badge = QRectF(info.left(), info.bottom() - 17, min(38, info.width()), 16)
+        self._box(p, badge, "#EEF3FB", 5)
+        self._text(p, badge, "文字", "#6E7E94", 7, True)
+        self._text(p, QRectF(badge.right() + 4, badge.top(), info.right() - badge.right() - 4, 16), "-17°", "#8794A8", 8, True)
 
     def _draw_resize(self, p, r):
         w = (r.width()-30)/2
@@ -135,13 +166,35 @@ class ToolPreview(QWidget):
         self._text(p, QRectF(a.right(),r.top(),30,r.height()), "→", "#5F7FC0", 13, True)
 
     def _draw_background_remove(self, p, r):
-        side = min(53, r.height()); a=QRectF(r.left()+4,r.center().y()-side/2,side,side); b=QRectF(r.right()-side-4,r.center().y()-side/2,side,side)
-        self._box(p,a,"#FFFFFF",8,"#DCE3EC"); self._box(p,QRectF(a.center().x()-12,a.center().y()-17,24,34),"#B9CCE2",7)
-        cell=side/4
-        for row in range(4):
-            for col in range(4):
-                p.fillRect(QRectF(b.left()+col*cell,b.top()+row*cell,cell+.4,cell+.4), QColor("#FFFFFF") if (row+col)%2 else QColor("#DDE5EE"))
-        self._box(p,QRectF(b.center().x()-12,b.center().y()-17,24,34),"#9D8AE1",7); self._text(p,QRectF(a.right(),r.top(),r.width()-side*2-8,r.height()),"→","#6F69C4",14,True)
+        side = min(53, r.height())
+        a = QRectF(r.left() + 4, r.center().y() - side / 2, side, side)
+        b = QRectF(r.right() - side - 4, r.center().y() - side / 2, side, side)
+        self._box(p, a, "#FFFFFF", 8, "#DDE5EE")
+
+        def product(box, body, cap):
+            p.setPen(Qt.PenStyle.NoPen)
+            p.setBrush(QColor(cap))
+            p.drawRoundedRect(QRectF(box.center().x() - 6, box.top() + 8, 12, 8), 3, 3)
+            p.setBrush(QColor(body))
+            p.drawRoundedRect(QRectF(box.center().x() - 13, box.top() + 14, 26, 31), 8, 8)
+            p.setBrush(QColor(255, 255, 255, 145))
+            p.drawRoundedRect(QRectF(box.center().x() - 7, box.top() + 23, 14, 8), 3, 3)
+
+        product(a, "#CAD7E6", "#91A5BC")
+        p.save()
+        clip = QPainterPath()
+        clip.addRoundedRect(b, 8, 8)
+        p.setClipPath(clip)
+        cell = side / 6
+        for row in range(6):
+            for col in range(6):
+                p.fillRect(QRectF(b.left() + col * cell, b.top() + row * cell, cell + .4, cell + .4), QColor("#FFFFFF") if (row + col) % 2 else QColor("#DCE4ED"))
+        p.restore()
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.setPen(QPen(QColor("#D8E1EC"), 1))
+        p.drawRoundedRect(b, 8, 8)
+        product(b, "#9989DC", "#6F61BD")
+        self._text(p, QRectF(a.right(), r.top(), r.width() - side * 2 - 8, r.height()), "→", "#7772C8", 14, True)
 
     def _draw_compression(self, p, r):
         thumb=QRectF(r.left(),r.top(),55,r.height()); self._box(p,thumb,"#E5E0F7",8)
@@ -152,8 +205,22 @@ class ToolPreview(QWidget):
         self._text(p,QRectF(info.left(),info.bottom()-14,info.width(),13),"示意 UI","#9AA6BA",8,False,Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
 
     def _draw_conversion(self, p, r):
-        w=min(75,(r.width()-34)/2); a=QRectF(r.left()+8,r.top()+5,w,r.height()-10); b=QRectF(r.right()-w-8,r.top()+5,w,r.height()-10)
-        self._box(p,a,"#EEF1FF",8,"#DFE4F8"); self._box(p,b,"#EDEBFF",8,"#E0DCF7"); self._text(p,a,"JPG","#5366C4",11,True); self._text(p,b,"PNG","#6C5BC3",11,True); self._text(p,QRectF(a.right(),r.top(),b.left()-a.right(),r.height()),"→","#7381B5",13,True)
+        w = min(82, (r.width() - 34) / 2)
+        a = QRectF(r.left() + 4, r.top() + 2, w, r.height() - 4)
+        b = QRectF(r.right() - w - 4, r.top() + 2, w, r.height() - 4)
+
+        def file_card(box, fmt, filename, fill, accent):
+            self._box(p, box, fill, 8, "#DEE5F2")
+            badge = QRectF(box.left() + 7, box.top() + 7, 31, 18)
+            self._box(p, badge, accent, 5)
+            self._text(p, badge, fmt, "#FFFFFF", 8, True)
+            p.setPen(QPen(QColor("#CBD5E4"), 1))
+            p.drawLine(QPointF(box.left() + 8, box.top() + 32), QPointF(box.right() - 8, box.top() + 32))
+            self._text(p, QRectF(box.left() + 7, box.bottom() - 22, box.width() - 14, 16), filename, "#64748B", 7, False, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+
+        file_card(a, "JPG", "IMG_001.jpg", "#F7F9FF", "#6677D8")
+        file_card(b, "PNG", "IMG_001.png", "#F6F4FF", "#8069D2")
+        self._text(p, QRectF(a.right(), r.top(), b.left() - a.right(), r.height()), "→", "#7381B5", 13, True)
 
     def _draw_rename(self, p, r):
         for i,(a,b) in enumerate((("IMG_001.jpg","产品图_001.jpg"),("IMG_002.jpg","产品图_002.jpg"))):
@@ -168,11 +235,43 @@ class ToolPreview(QWidget):
         badge=QRectF(cal.right()+9,r.center().y()-14,r.right()-cal.right()-9,28); self._box(p,badge,"#EAF8F2",8); self._text(p,badge,"3 待评价","#247B62",8,True)
 
     def _draw_competitor_monitor(self, p, r):
-        self._text(p,QRectF(r.left(),r.top(),40,16),"¥45","#334155",9,True,Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter); self._text(p,QRectF(r.right()-40,r.top(),40,16),"¥50","#334155",9,True,Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignVCenter)
-        chart=QRectF(r.left()+2,r.top()+22,r.width()-4,r.height()-24); pts=[QPointF(chart.left(),chart.bottom()-8),QPointF(chart.left()+chart.width()*.23,chart.bottom()-19),QPointF(chart.left()+chart.width()*.47,chart.bottom()-16),QPointF(chart.left()+chart.width()*.70,chart.top()+12),QPointF(chart.right(),chart.top()+7)]; path=QPainterPath(pts[0])
-        for point in pts[1:]: path.lineTo(point)
-        p.setPen(QPen(QColor("#21A276"),2)); p.setBrush(Qt.BrushStyle.NoBrush); p.drawPath(path); p.setPen(Qt.PenStyle.NoPen); p.setBrush(QColor("#21A276")); p.drawEllipse(pts[-1],3,3)
-        badge=QRectF(r.right()-55,r.top()+16,55,19); self._box(p,badge,"#E7F7F0",7); self._text(p,badge,"+11.1%","#168761",8,True)
+        self._text(p, QRectF(r.left(), r.top(), 40, 16), "¥45", "#334155", 9, True, Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+        self._text(p, QRectF(r.right() - 40, r.top(), 40, 16), "¥50", "#334155", 9, True, Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        badge = QRectF(r.center().x() - 26, r.top() - 1, 52, 18)
+        self._box(p, badge, "#E7F7F0", 7)
+        self._text(p, badge, "+11.1%", "#168761", 8, True)
+
+        chart = QRectF(r.left() + 2, r.top() + 23, r.width() - 4, r.height() - 25)
+        p.setPen(QPen(QColor(175, 195, 208, 75), 1, Qt.PenStyle.DashLine))
+        for ratio in (.25, .7):
+            y = chart.top() + chart.height() * ratio
+            p.drawLine(QPointF(chart.left(), y), QPointF(chart.right(), y))
+        points = [
+            QPointF(chart.left(), chart.bottom() - 7),
+            QPointF(chart.left() + chart.width() * .23, chart.bottom() - 18),
+            QPointF(chart.left() + chart.width() * .47, chart.bottom() - 15),
+            QPointF(chart.left() + chart.width() * .70, chart.top() + 12),
+            QPointF(chart.right(), chart.top() + 6),
+        ]
+        line = QPainterPath(points[0])
+        for point in points[1:]:
+            line.lineTo(point)
+        area = QPainterPath(line)
+        area.lineTo(chart.right(), chart.bottom())
+        area.lineTo(chart.left(), chart.bottom())
+        area.closeSubpath()
+        fade = QLinearGradient(0, chart.top(), 0, chart.bottom())
+        fade.setColorAt(0, QColor(33, 162, 118, 45))
+        fade.setColorAt(1, QColor(33, 162, 118, 2))
+        p.setPen(Qt.PenStyle.NoPen)
+        p.setBrush(QBrush(fade))
+        p.drawPath(area)
+        p.setPen(QPen(QColor("#21A276"), 2))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawPath(line)
+        p.setPen(QPen(QColor("#FFFFFF"), 1.5))
+        p.setBrush(QColor("#21A276"))
+        p.drawEllipse(points[-1], 3.5, 3.5)
 
 
 class ToolCard(QToolButton):
@@ -186,8 +285,23 @@ class ToolCard(QToolButton):
         self.setMinimumWidth(220)
         self.setFixedHeight(210)
         self.setToolTip(f"打开{tool.name}")
+        self._shadow = QGraphicsDropShadowEffect(self)
+        self._shadow.setBlurRadius(24)
+        self._shadow.setOffset(0, 6)
+        self._shadow.setColor(QColor(46, 67, 101, 22))
+        self.setGraphicsEffect(self._shadow)
         layout=QVBoxLayout(self); layout.setContentsMargins(16,15,16,15); layout.setSpacing(7)
         header=QHBoxLayout(); header.setSpacing(9); header.addWidget(IconTile(tool)); meta=QVBoxLayout(); meta.setSpacing(1); meta.addWidget(QLabel(tool.category,objectName="toolCardCategory"))
         if tool.featured: meta.addWidget(QLabel("Popular",objectName="featuredBadge"),0,Qt.AlignmentFlag.AlignLeft)
         header.addLayout(meta); header.addStretch(); header.addWidget(QLabel("↗",objectName="toolCardArrow"),0,Qt.AlignmentFlag.AlignTop); layout.addLayout(header)
         layout.addWidget(QLabel(tool.name,objectName="toolCardTitle")); description=QLabel(tool.description,objectName="toolCardDescription"); description.setWordWrap(True); description.setMaximumHeight(32); layout.addWidget(description); layout.addStretch(1); layout.addWidget(ToolPreview(tool.id))
+
+    def enterEvent(self, event) -> None:
+        self._shadow.setBlurRadius(29)
+        self._shadow.setColor(QColor(46, 67, 101, 34))
+        super().enterEvent(event)
+
+    def leaveEvent(self, event) -> None:
+        self._shadow.setBlurRadius(24)
+        self._shadow.setColor(QColor(46, 67, 101, 22))
+        super().leaveEvent(event)

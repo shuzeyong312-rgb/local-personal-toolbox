@@ -51,7 +51,20 @@ class TitleBar(QWidget):
         self.shortcut_badge = QLabel("Ctrl K", objectName="searchShortcutBadge")
         search_layout.addWidget(self.shortcut_badge)
         layout.addWidget(self.search_shell, 1)
-        layout.addStretch(1)
+
+        for name, tooltip in (("sun", "外观设置（即将提供）"), ("bell", "通知（即将提供）")):
+            action = QPushButton(objectName="headerAction")
+            action.setIcon(icon(name, "#6E7C91", 17))
+            action.setIconSize(QSize(17, 17))
+            action.setToolTip(tooltip)
+            action.setEnabled(False)
+            layout.addWidget(action)
+        profile = QPushButton(objectName="profileAction")
+        profile.setIcon(icon("user", "#73839B", 17))
+        profile.setIconSize(QSize(17, 17))
+        profile.setToolTip("本地个人工作空间")
+        profile.setEnabled(False)
+        layout.addWidget(profile)
 
         minimize = QPushButton(objectName="windowButton")
         self.maximize = QPushButton(objectName="windowButton")

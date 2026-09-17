@@ -147,7 +147,7 @@ class DashboardPage(QWidget):
             self.grid.addWidget(card, index // self._columns, index % self._columns)
         for column in range(3):
             self.grid.setColumnStretch(column, 1 if column < self._columns else 0)
-        self.tool_count.setText(f"{len(tools)} / {len(TOOL_REGISTRY)} 个工具")
+        self.tool_count.setText(f"显示 {len(tools)} / {len(TOOL_REGISTRY)}")
         self.empty.setVisible(not tools)
         self.grid_host.setVisible(bool(tools))
 
