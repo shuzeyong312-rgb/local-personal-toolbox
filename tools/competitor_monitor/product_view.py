@@ -4,12 +4,11 @@ import json
 from dataclasses import dataclass
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QLabel, QHeaderView, QMenu, QTableWidgetItem, QToolButton
-
-from tools.competitor_monitor.page import (
-    CompetitorMonitorPage as BaseCompetitorMonitorPage,
-    ProductCell,
+from PySide6.QtWidgets import (
+    QHeaderView, QLabel, QMenu, QTableWidgetItem, QToolButton, QVBoxLayout, QWidget,
 )
+
+from tools.competitor_monitor.page import CompetitorMonitorPage as BaseCompetitorMonitorPage
 
 
 MISSING_FIELD_LABELS = {
@@ -62,6 +61,48 @@ class StatusBadge(QLabel):
         self.setStyleSheet(
             f"QLabel {{{style} border-radius:10px; padding:3px 8px; font-size:12px; font-weight:700;}}"
         )
+
+
+class CompactProductCell(QWidget):
+    """Two-line product identity cell: one-line title + one-line secondary metadata."""
+
+    def __init__(self, name: str, shop_name: str, meta: str, parent=None) -> None:
+        super().__init__(parent)
+        self.name = name
+        self.shop_name = shop_name
+        self.meta_text = f"{shop_name} · {meta}" if meta else shop_name
+
+        self.title = QLabel(objectName="compactProductTitle")
+        self.title.setWordWrap(False)
+        self.title.setStyleSheet("color:#10264A; font-size:13px; font-weight:600; background:transparent;")
+
+        self.meta = QLabel(objectName="compactProductMeta")
+        self.meta.setWordWrap(False)
+        self.meta.setStyleSheet("color:#7A8CA6; font-size:11px; font-weight:400; background:transparent;")
+
+        self.setToolTip(f"{name}\n{self.meta_text}")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 7, 10, 7)
+        layout.setSpacing(3)
+        layout.addWidget(self.title)
+        layout.addWidget(self.meta)
+        self._update_text()
+
+    def resizeEvent(self, event) -> None:
+        super().resizeEvent(event)
+        self._update_text()
+
+    def text(self) -> str:
+        return f"{self.title.text()}\n{self.meta.text()}"
+
+    def _update_text(self) -> None:
+        width = max(1, self.width() - 22)
+        self.title.setText(self.title.fontMetrics().elidedText(
+            self.name, Qt.TextElideMode.ElideRight, width
+        ))
+        self.meta.setText(self.meta.fontMetrics().elidedText(
+            self.meta_text, Qt.TextElideMode.ElideRight, width
+        ))
 
 
 def build_row_view(row, snapshot) -> CompetitorRowView:
@@ -154,12 +195,7 @@ def _item(text: str, competitor_id: int, *, tooltip: str | None = None, centered
 
 
 class CompetitorMonitorPage(BaseCompetitorMonitorPage):
-    """Competitor monitor page with a single-layer, business-oriented product table.
-
-    The legacy page owns collection, history and settings behavior. This presentation layer
-    deliberately owns only the product-list view model and rendering so cell widgets and
-    QTableWidgetItems never render competing text in the same cell.
-    """
+    """Competitor monitor page with a single-layer, business-oriented product table."""
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -178,7 +214,7 @@ class CompetitorMonitorPage(BaseCompetitorMonitorPage):
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
         for column in range(1, 8):
             header.setSectionResizeMode(column, QHeaderView.ResizeMode.Fixed)
-        for column, width in enumerate((0, 100, 90, 86, 58, 124, 96, 54)):
+        for column, width in enumerate((0, 92, 88, 80, 54, 110, 92, 52)):
             if column:
                 self.table.setColumnWidth(column, width)
 
@@ -198,8 +234,6 @@ class CompetitorMonitorPage(BaseCompetitorMonitorPage):
         if self.only_failed.isChecked():
             rows = [row for row in rows if row["status"] in ("部分异常", "最近采集失败")]
 
-        # clearContents removes stale cell widgets as well as items. Each visible cell below
-        # gets exactly one text layer; widget-backed cells keep only a blank metadata item.
         self.table.clearContents()
         self.table.setRowCount(len(rows))
 
@@ -209,7 +243,7 @@ class CompetitorMonitorPage(BaseCompetitorMonitorPage):
 
             identity = _item("", view.competitor_id, tooltip=view.title)
             self.table.setItem(row_index, 0, identity)
-            product = ProductCell(view.title, view.shop_name, view.meta)
+            product = CompactProductCell(view.title, view.shop_name, view.meta)
             product.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
             self.table.setCellWidget(row_index, 0, product)
 
@@ -244,7 +278,7 @@ class CompetitorMonitorPage(BaseCompetitorMonitorPage):
                 )
             action.setMenu(menu)
             self.table.setCellWidget(row_index, 7, action)
-            self.table.setRowHeight(row_index, 76)
+            self.table.setRowHeight(row_index, 64)
 
         self.show_latest()
         self.refresh_dashboard()
