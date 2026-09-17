@@ -30,7 +30,7 @@ class MainWindow(QMainWindow):
 
         main = QWidget(objectName="mainArea")
         main_layout = QVBoxLayout(main)
-        main_layout.setContentsMargins(0, 0, 0, 18)
+        main_layout.setContentsMargins(0, 0, 0, 16)
         main_layout.setSpacing(0)
         self.title_bar = TitleBar(self)
         self.title_bar.searchChanged.connect(self._filter_dashboard)
@@ -69,7 +69,7 @@ class MainWindow(QMainWindow):
 
         brand_box = QWidget(objectName="brandBox")
         brand_layout = QHBoxLayout(brand_box)
-        brand_layout.setContentsMargins(8, 4, 8, 22)
+        brand_layout.setContentsMargins(8, 3, 8, 16)
         brand_layout.setSpacing(10)
         brand_icon = QLabel(objectName="brandIcon")
         brand_icon.setPixmap(icon("home", "#2563EB", 20).pixmap(20, 20))
@@ -92,7 +92,12 @@ class MainWindow(QMainWindow):
         for category in self.CATEGORIES:
             section = QListWidgetItem(category)
             section.setFlags(Qt.ItemFlag.NoItemFlags)
-            section.setSizeHint(QSize(180, 30))
+            section.setSizeHint(QSize(180, 26))
+            section.setForeground(QColor("#9AA6B8"))
+            section_font = section.font()
+            section_font.setPointSize(9)
+            section_font.setBold(True)
+            section.setFont(section_font)
             self.navigation.addItem(section)
             for tool in tools_in_category(category):
                 item = QListWidgetItem(icon(tool.icon, "#71809C"), tool.name)
@@ -113,8 +118,8 @@ class MainWindow(QMainWindow):
         shadow.setColor(QColor(15, 23, 42, 28))
         dock.setGraphicsEffect(shadow)
         layout = QHBoxLayout(dock)
-        layout.setContentsMargins(8, 7, 8, 7)
-        layout.setSpacing(4)
+        layout.setContentsMargins(7, 5, 7, 5)
+        layout.setSpacing(3)
 
         home = self._dock_button("首页", "home")
         home.clicked.connect(self.show_dashboard)

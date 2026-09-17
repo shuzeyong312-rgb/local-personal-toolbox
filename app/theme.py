@@ -253,4 +253,54 @@ QFrame#floatingDock {{ background: {SURFACE}; border: 1px solid #DFE6EF; border-
 QToolButton#dockButton {{ color: #5A687C; background: transparent; border: 1px solid transparent; border-radius: 12px; min-width: 72px; min-height: 52px; padding: 3px 6px; font-size: 10px; }}
 QToolButton#dockButton:hover {{ color: {PRIMARY}; background: #EEF4FF; border-color: #E0EAFA; }}
 QToolButton#dockButton:focus {{ border-color: {PRIMARY}; }}
+
+/* Phase 1.5: compact bento refinement */
+QWidget#sidebar {{ border-right: 1px solid #EEF1F4; }}
+QLabel#brand {{ font-size: 14px; font-weight: 700; }}
+QLabel#brandHint {{ color: #97A3B5; font-size: 10px; }}
+QLabel#privacy {{ color: #A4AFBF; font-size: 10px; padding: 10px 8px 0; }}
+QListWidget#navigation {{ padding: 0 3px; }}
+QListWidget#navigation::item {{ min-height: 38px; padding: 0 9px; margin: 1px 0; border-radius: 10px; }}
+QListWidget#navigation::item:hover {{ background: #F5F7FB; }}
+QListWidget#navigation::item:selected {{ background: #EAF1FF; color: #2563EB; }}
+QWidget#titleBar {{ min-height: 56px; max-height: 56px; }}
+QFrame#globalSearchShell {{ min-height: 44px; max-width: 540px; border-color: #E5EAF1; }}
+QLineEdit#globalSearch {{ min-height: 42px; color: #526175; font-size: 12px; }}
+QLineEdit#globalSearch::placeholder {{ color: #A0AABD; }}
+QPushButton#windowButton, QPushButton#closeButton {{ min-height: 56px; max-height: 56px; }}
+QLabel#dashboardTitle {{ font-size: 25px; }}
+QLabel#dashboardSubtitle {{ font-size: 12px; }}
+QLabel#toolCount {{ color: #9AA6B8; background: transparent; border-radius: 0; padding: 0; font-size: 11px; font-weight: 500; }}
+QToolButton#toolCard {{ border-radius: 17px; }}
+QToolButton#toolCard:hover {{ background: #FFFFFF; border-color: #C9D8F0; }}
+QToolButton#toolCard:focus {{ border: 2px solid #2563EB; }}
+QLabel#toolCardIcon {{ border-radius: 11px; min-width: 38px; max-width: 38px; min-height: 38px; max-height: 38px; }}
+QLabel#toolCardCategory {{ color: #97A3B5; font-size: 10px; font-weight: 500; }}
+QLabel#toolCardArrow {{ color: #B0BAC8; font-size: 13px; }}
+QLabel#toolCardTitle {{ font-size: 15px; font-weight: 700; }}
+QLabel#toolCardDescription {{ color: #7F8DA3; font-size: 11px; }}
+QFrame#toolPreview {{ background: #F7F9FC; border: 1px solid #EEF2F6; border-radius: 11px; }}
+QFrame#previewPhoto {{ background: #DCEAFF; border-radius: 7px; min-width: 64px; }}
+QLabel#previewWatermark {{ color: #3264B7; background: #FFFFFF; border: 1px solid #C6D9FA; border-radius: 4px; padding: 2px 5px; font-size: 10px; font-weight: 700; qproperty-alignment: AlignCenter; }}
+QLabel#previewCaption {{ color: #71809C; background: transparent; font-size: 10px; }}
+QLabel#previewMetric {{ color: #334155; background: transparent; font-size: 11px; font-weight: 700; }}
+QLabel#previewDimension {{ color: #3A4B63; background: #FFFFFF; border: 1px solid #E1E8F0; border-radius: 6px; padding: 4px 5px; font-size: 10px; font-weight: 600; }}
+QLabel#previewArrow {{ color: #6E8FC9; background: transparent; font-size: 13px; font-weight: 700; }}
+QFrame#previewWhiteTile {{ background: #FFFFFF; border: 1px solid #DCE3EC; border-radius: 5px; }}
+QWidget#previewChecker {{ border: 1px solid #DCE3EC; border-radius: 5px; }}
+QFrame#previewCheckerLight {{ background: #FFFFFF; }}
+QFrame#previewCheckerDark {{ background: #DCE6F0; }}
+QFrame#previewProgressTrack {{ background: #E3EAF3; border-radius: 4px; min-height: 7px; max-height: 7px; }}
+QFrame#previewProgressFill {{ background: #7CA6F8; border-radius: 4px; min-height: 7px; max-height: 7px; }}
+QLabel#previewFormat {{ color: #4267AF; background: #EAF1FF; border-radius: 5px; padding: 4px 8px; font-size: 10px; font-weight: 700; }}
+QLabel#previewFilename {{ color: #526175; background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 5px; padding: 4px; font-size: 10px; }}
+QFrame#previewDateTile {{ background: #FFFFFF; border: 1px solid #DDE7F5; border-radius: 6px; min-width: 32px; max-width: 32px; }}
+QLabel#previewDateMonth {{ color: #6B8BC4; font-size: 7px; font-weight: 700; }}
+QLabel#previewDateDay {{ color: #2E4A74; font-size: 13px; font-weight: 700; }}
+QLabel#previewBadge {{ color: #34835F; background: #EAF8F2; border-radius: 6px; padding: 4px 7px; font-size: 10px; font-weight: 600; }}
+QWidget#previewTrend {{ min-width: 36px; }}
+QFrame#previewTrendBar {{ background: #77A1ED; border-radius: 3px; }}
+QFrame#floatingDock {{ border-color: #E7EBF0; border-radius: 19px; }}
+QToolButton#dockButton {{ min-width: 61px; min-height: 46px; padding: 2px 4px; font-size: 9px; color: #6B788B; }}
+QToolButton#dockButton:hover {{ color: #2563EB; background: #F1F5FF; border-color: #E3EBFA; }}
 """

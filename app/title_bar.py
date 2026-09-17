@@ -8,14 +8,14 @@ from app.tool_registry import ToolDefinition
 class TitleBar(QWidget):
     searchChanged = Signal(str)
     backRequested = Signal()
-    HEIGHT = 64
+    HEIGHT = 56
 
     def __init__(self, window) -> None:
         super().__init__(objectName="titleBar")
         self.host_window = window
         self.setFixedHeight(self.HEIGHT)
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(22, 0, 0, 0)
+        layout.setContentsMargins(20, 0, 0, 0)
         layout.setSpacing(10)
 
         self.back = QPushButton(objectName="headerBackButton")
