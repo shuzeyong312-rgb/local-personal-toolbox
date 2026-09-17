@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import QEvent, Qt, Signal
 from PySide6.QtWidgets import QDialog, QHBoxLayout, QLabel, QPlainTextEdit, QProgressBar, QPushButton, QVBoxLayout, QWidget
 
 from utils.system import open_folder
@@ -16,6 +16,7 @@ class BaseDialog(QDialog):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setModal(True)
         self.setMinimumWidth(480)
+        self._drag_offset = None
         outer = QVBoxLayout(self)
         outer.setContentsMargins(12, 12, 12, 12)
         shell = QWidget(objectName="dialogShell")
@@ -25,12 +26,36 @@ class BaseDialog(QDialog):
         shell_layout.setSpacing(0)
         self.title_label = QLabel(title, objectName="dialogTitle")
         self.title_label.setContentsMargins(24, 20, 24, 18)
+        self.title_label.setCursor(Qt.CursorShape.OpenHandCursor)
+        self.title_label.installEventFilter(self)
         shell_layout.addWidget(self.title_label)
         content = QWidget(objectName="dialogContent")
         self.layout = QVBoxLayout(content)
         self.layout.setContentsMargins(24, 22, 24, 22)
         self.layout.setSpacing(16)
         shell_layout.addWidget(content)
+
+    def eventFilter(self, watched, event) -> bool:
+        if watched is self.title_label:
+            if event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton:
+                self._drag_offset = event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+                self.title_label.setCursor(Qt.CursorShape.ClosedHandCursor)
+                event.accept()
+                return True
+            if (
+                event.type() == QEvent.Type.MouseMove
+                and self._drag_offset is not None
+                and event.buttons() & Qt.MouseButton.LeftButton
+            ):
+                self.move(event.globalPosition().toPoint() - self._drag_offset)
+                event.accept()
+                return True
+            if event.type() == QEvent.Type.MouseButtonRelease and event.button() == Qt.MouseButton.LeftButton:
+                self._drag_offset = None
+                self.title_label.setCursor(Qt.CursorShape.OpenHandCursor)
+                event.accept()
+                return True
+        return super().eventFilter(watched, event)
 
 
 class TaskDialog(BaseDialog):
