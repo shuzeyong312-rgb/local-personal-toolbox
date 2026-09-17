@@ -1,5 +1,262 @@
 {
   "version": 2,
-  "plans": [],
-  "records": []
+  "plans": [
+    {
+      "id": "plan_9178d4a54ce6489198b1e615352cd8bd",
+      "platform": "1688",
+      "custom_platform_name": "",
+      "model": "A19",
+      "start_date": "2026-09-16",
+      "initial_completed_quantity": 1,
+      "status": "active",
+      "stages": [
+        {
+          "type": "until_total",
+          "frequency_days": 1,
+          "target_quantity": 1,
+          "until_total": 3
+        },
+        {
+          "type": "until_total",
+          "frequency_days": 2,
+          "target_quantity": 1,
+          "until_total": 10
+        },
+        {
+          "type": "continuous",
+          "frequency_days": 4,
+          "target_quantity": 1
+        }
+      ],
+      "note": "",
+      "effective_date": "2026-09-16"
+    },
+    {
+      "id": "plan_1210ec14ceec464b89891d33af104c1d",
+      "platform": "1688",
+      "custom_platform_name": "",
+      "model": "暖手宝定制",
+      "start_date": "2026-09-16",
+      "initial_completed_quantity": 0,
+      "status": "active",
+      "stages": [
+        {
+          "type": "until_total",
+          "frequency_days": 1,
+          "target_quantity": 1,
+          "until_total": 3
+        },
+        {
+          "type": "until_total",
+          "frequency_days": 2,
+          "target_quantity": 1,
+          "until_total": 10
+        },
+        {
+          "type": "continuous",
+          "frequency_days": 7,
+          "target_quantity": 1
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "plan_0ee8ec0d9c544dc4bbbdb1b7320392f6",
+      "platform": "1688",
+      "custom_platform_name": "",
+      "model": "FX-039G",
+      "start_date": "2026-09-16",
+      "initial_completed_quantity": 5,
+      "status": "active",
+      "stages": [
+        {
+          "type": "until_total",
+          "frequency_days": 2,
+          "target_quantity": 1,
+          "until_total": 10
+        },
+        {
+          "type": "continuous",
+          "frequency_days": 3,
+          "target_quantity": 1
+        }
+      ],
+      "note": "",
+      "effective_date": "2026-09-16"
+    },
+    {
+      "id": "plan_4f972a89328c4f41879d68f9bd1dd71f",
+      "platform": "1688",
+      "custom_platform_name": "",
+      "model": "Y35",
+      "start_date": "2026-09-17",
+      "initial_completed_quantity": 1,
+      "status": "active",
+      "stages": [
+        {
+          "type": "until_total",
+          "frequency_days": 1,
+          "target_quantity": 1,
+          "until_total": 3
+        },
+        {
+          "type": "until_total",
+          "frequency_days": 2,
+          "target_quantity": 1,
+          "until_total": 10
+        },
+        {
+          "type": "continuous",
+          "frequency_days": 7,
+          "target_quantity": 1
+        }
+      ],
+      "note": ""
+    },
+    {
+      "id": "plan_21c6fb7b80e64d858424ff08250094f6",
+      "platform": "1688",
+      "custom_platform_name": "",
+      "model": "Y36",
+      "start_date": "2026-09-17",
+      "initial_completed_quantity": 2,
+      "status": "active",
+      "stages": [
+        {
+          "type": "until_total",
+          "frequency_days": 1,
+          "target_quantity": 1,
+          "until_total": 4
+        },
+        {
+          "type": "until_total",
+          "frequency_days": 2,
+          "target_quantity": 1,
+          "until_total": 10
+        },
+        {
+          "type": "continuous",
+          "frequency_days": 7,
+          "target_quantity": 1
+        }
+      ],
+      "note": "",
+      "effective_date": "2026-09-16"
+    },
+    {
+      "id": "plan_b05e92f6abd74a32916df9cbb4bd09b4",
+      "platform": "1688",
+      "custom_platform_name": "",
+      "model": "A404",
+      "start_date": "2026-09-17",
+      "initial_completed_quantity": 4,
+      "status": "active",
+      "stages": [
+        {
+          "type": "until_total",
+          "frequency_days": 2,
+          "target_quantity": 1,
+          "until_total": 10
+        },
+        {
+          "type": "continuous",
+          "frequency_days": 3,
+          "target_quantity": 1
+        }
+      ],
+      "note": "",
+      "effective_date": "2026-09-16",
+      "schedule_completed_occurrences": 0
+    }
+  ],
+  "records": [
+    {
+      "id": "record_b59b977df46240f281e145f36cb5b29d",
+      "plan_id": "plan_9178d4a54ce6489198b1e615352cd8bd",
+      "date": "2026-09-16",
+      "source": "schedule",
+      "target_quantity": 1,
+      "actual_quantity": 1,
+      "reviewed_quantity": 0,
+      "review_date": null,
+      "note": ""
+    },
+    {
+      "id": "record_9188f160f9bb44008ad5edce34607b44",
+      "plan_id": "plan_0ee8ec0d9c544dc4bbbdb1b7320392f6",
+      "date": "2026-09-16",
+      "source": "schedule",
+      "target_quantity": 1,
+      "actual_quantity": 1,
+      "reviewed_quantity": 0,
+      "review_date": null,
+      "note": ""
+    },
+    {
+      "id": "record_1ed1b4852cc44e538caccbb31847e9e6",
+      "plan_id": "plan_1210ec14ceec464b89891d33af104c1d",
+      "date": "2026-09-16",
+      "source": "schedule",
+      "target_quantity": 1,
+      "actual_quantity": 1,
+      "reviewed_quantity": 0,
+      "review_date": null,
+      "note": ""
+    },
+    {
+      "id": "record_7267462f30564ad39d0fcb159a1d779e",
+      "plan_id": "plan_9178d4a54ce6489198b1e615352cd8bd",
+      "date": "2026-09-17",
+      "source": "schedule",
+      "target_quantity": 1,
+      "actual_quantity": 1,
+      "reviewed_quantity": 0,
+      "review_date": null,
+      "note": ""
+    },
+    {
+      "id": "record_a1f06c77aaa24a24ad056e0e3c40fb2b",
+      "plan_id": "plan_b05e92f6abd74a32916df9cbb4bd09b4",
+      "date": "2026-09-17",
+      "source": "schedule",
+      "target_quantity": 1,
+      "actual_quantity": 1,
+      "reviewed_quantity": 0,
+      "review_date": null,
+      "note": ""
+    },
+    {
+      "id": "record_ae5a35d64e2642379e6f5b6c36f3dda6",
+      "plan_id": "plan_21c6fb7b80e64d858424ff08250094f6",
+      "date": "2026-09-17",
+      "source": "schedule",
+      "target_quantity": 1,
+      "actual_quantity": 1,
+      "reviewed_quantity": 0,
+      "review_date": null,
+      "note": ""
+    },
+    {
+      "id": "record_d7271932cbde4c1783cf410d29f1f3d2",
+      "plan_id": "plan_4f972a89328c4f41879d68f9bd1dd71f",
+      "date": "2026-09-17",
+      "source": "schedule",
+      "target_quantity": 1,
+      "actual_quantity": 1,
+      "reviewed_quantity": 0,
+      "review_date": null,
+      "note": ""
+    },
+    {
+      "id": "record_733304801c5441c3a7f4cc342357645a",
+      "plan_id": "plan_1210ec14ceec464b89891d33af104c1d",
+      "date": "2026-09-17",
+      "source": "schedule",
+      "target_quantity": 1,
+      "actual_quantity": 1,
+      "reviewed_quantity": 0,
+      "review_date": null,
+      "note": ""
+    }
+  ]
 }

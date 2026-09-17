@@ -1,0 +1,169 @@
+test_complete_and_partial_snapshots_are_kept (tests.test_competitor_monitor.CompetitorMonitorTests.test_complete_and_partial_snapshots_are_kept) ... ok
+test_failed_collection_keeps_existing_snapshot (tests.test_competitor_monitor.CompetitorMonitorTests.test_failed_collection_keeps_existing_snapshot) ... ok
+test_fuzzy_metric_keeps_semantics (tests.test_competitor_monitor.CompetitorMonitorTests.test_fuzzy_metric_keeps_semantics) ... ok
+test_groups_delete_to_ungrouped (tests.test_competitor_monitor.CompetitorMonitorTests.test_groups_delete_to_ungrouped) ... ok
+test_optional_unavailable_values_become_null (tests.test_competitor_monitor.CompetitorMonitorTests.test_optional_unavailable_values_become_null) ... ok
+test_url_validation_and_duplicate_offer (tests.test_competitor_monitor.CompetitorMonitorTests.test_url_validation_and_duplicate_offer) ... ok
+test_batch_collection_excludes_paused_competitor (tests.test_competitor_monitor_acceptance.CompetitorMonitorAcceptanceTests.test_batch_collection_excludes_paused_competitor) ... ok
+test_group_changes_preserve_competitor_and_snapshots (tests.test_competitor_monitor_acceptance.CompetitorMonitorAcceptanceTests.test_group_changes_preserve_competitor_and_snapshots) ... ok
+test_one_failure_does_not_stop_batch_worker (tests.test_competitor_monitor_acceptance.CompetitorMonitorAcceptanceTests.test_one_failure_does_not_stop_batch_worker) ... ok
+test_sqlite_survives_reopen_and_snapshots_append (tests.test_competitor_monitor_acceptance.CompetitorMonitorAcceptanceTests.test_sqlite_survives_reopen_and_snapshots_append) ... ok
+test_latest_snapshot_is_visible_and_pause_is_preserved (tests.test_competitor_monitor_ui.CompetitorMonitorUiTests.test_latest_snapshot_is_visible_and_pause_is_preserved) ... ok
+test_external_conflict_blocks_without_modifying_files (tests.test_file_rename.FileRenameTests.test_external_conflict_blocks_without_modifying_files) ... ok
+test_invalid_prefix_and_mixed_folders_are_rejected (tests.test_file_rename.FileRenameTests.test_invalid_prefix_and_mixed_folders_are_rejected) ... ok
+test_sort_is_stable_and_extensions_are_preserved (tests.test_file_rename.FileRenameTests.test_sort_is_stable_and_extensions_are_preserved) ... ok
+test_two_phase_rename_supports_batch_name_swap (tests.test_file_rename.FileRenameTests.test_two_phase_rename_supports_batch_name_swap) ... ok
+test_damaged_file_does_not_prevent_later_processing (tests.test_image_background_remove.BackgroundRemoveTests.test_damaged_file_does_not_prevent_later_processing) ... ok
+test_enclosed_white_product_and_highlight_are_preserved (tests.test_image_background_remove.BackgroundRemoveTests.test_enclosed_white_product_and_highlight_are_preserved) ... ok
+test_gray_background_modes_and_soft_edge (tests.test_image_background_remove.BackgroundRemoveTests.test_gray_background_modes_and_soft_edge) ... ok
+test_jpeg_noise_is_removed_and_output_names_do_not_overwrite (tests.test_image_background_remove.BackgroundRemoveTests.test_jpeg_noise_is_removed_and_output_names_do_not_overwrite) ... ok
+test_png_size_and_existing_alpha_are_preserved (tests.test_image_background_remove.BackgroundRemoveTests.test_png_size_and_existing_alpha_are_preserved) ... ok
+test_white_background_is_transparent_and_dark_product_remains (tests.test_image_background_remove.BackgroundRemoveTests.test_white_background_is_transparent_and_dark_product_remains) ... ok
+test_invalid_quality_and_damaged_image_fail (tests.test_image_compression.ImageCompressionTests.test_invalid_quality_and_damaged_image_fail) ... ok
+test_output_name_never_overwrites (tests.test_image_compression.ImageCompressionTests.test_output_name_never_overwrites) ... ok
+test_supported_formats_preserve_format_dimensions_and_alpha (tests.test_image_compression.ImageCompressionTests.test_supported_formats_preserve_format_dimensions_and_alpha) ... ok
+test_collision_modes_never_overwrite_source_by_default (tests.test_image_conversion.ImageConversionTests.test_collision_modes_never_overwrite_source_by_default) ... ok
+test_supported_modes_and_formats_convert_without_changing_size (tests.test_image_conversion.ImageConversionTests.test_supported_modes_and_formats_convert_without_changing_size) ... ok
+test_transparent_png_to_jpg_uses_selected_background_and_keeps_size (tests.test_image_conversion.ImageConversionTests.test_transparent_png_to_jpg_uses_selected_background_and_keeps_size) ... ok
+test_all_formats_keep_original_dimensions (tests.test_image_processing.ImageProcessingTests.test_all_formats_keep_original_dimensions) ... ok
+test_animated_image_is_rejected (tests.test_image_processing.ImageProcessingTests.test_animated_image_is_rejected) ... ok
+test_format_conversion_transparency_and_quality (tests.test_image_processing.ImageProcessingTests.test_format_conversion_transparency_and_quality) ... ok
+test_jpeg_uses_quality_95_and_preserves_exif (tests.test_image_processing.ImageProcessingTests.test_jpeg_uses_quality_95_and_preserves_exif) ... ok
+test_output_path_never_overwrites (tests.test_image_processing.ImageProcessingTests.test_output_path_never_overwrites) ... ok
+test_png_keeps_transparency_and_untouched_pixels (tests.test_image_processing.ImageProcessingTests.test_png_keeps_transparency_and_untouched_pixels) ... ok
+test_tiled_render_keeps_size (tests.test_image_processing.ImageProcessingTests.test_tiled_render_keeps_size) ... ok
+test_formats_alpha_metadata_orientation_failure_and_names (tests.test_image_resize.ImageResizeTests.test_formats_alpha_metadata_orientation_failure_and_names) ... ok
+test_icc_profile_is_preserved (tests.test_image_resize.ImageResizeTests.test_icc_profile_is_preserved) ... ok
+test_required_resize_modes (tests.test_image_resize.ImageResizeTests.test_required_resize_modes) ... ok
+test_actual_quantity_does_not_move_future_schedule (tests.test_order_calendar.OrderCalendarTests.test_actual_quantity_does_not_move_future_schedule) ... ok
+test_atomic_save_keeps_five_backups_and_loads_latest_valid_backup (tests.test_order_calendar.OrderCalendarTests.test_atomic_save_keeps_five_backups_and_loads_latest_valid_backup) ... ok
+test_change_start_date_to_future (tests.test_order_calendar.OrderCalendarTests.test_change_start_date_to_future) ... ok
+test_change_start_date_today_to_tomorrow (tests.test_order_calendar.OrderCalendarTests.test_change_start_date_today_to_tomorrow) ... ok
+test_edit_model_does_not_reschedule (tests.test_order_calendar.OrderCalendarTests.test_edit_model_does_not_reschedule) ... ok
+test_edit_note_does_not_reschedule (tests.test_order_calendar.OrderCalendarTests.test_edit_note_does_not_reschedule) ... ok
+test_edit_plan_duplicate_platform_model (tests.test_order_calendar.OrderCalendarTests.test_edit_plan_duplicate_platform_model) ... ok
+test_ended_plan_keeps_history_and_facts (tests.test_order_calendar.OrderCalendarTests.test_ended_plan_keeps_history_and_facts) ... ok
+test_future_actual_record_is_not_lost (tests.test_order_calendar.OrderCalendarTests.test_future_actual_record_is_not_lost) ... ok
+test_future_schedule_override_does_not_create_ghost_task (tests.test_order_calendar.OrderCalendarTests.test_future_schedule_override_does_not_create_ghost_task) ... ok
+test_initial_quantity_and_target_quantity_control_occurrence_count (tests.test_order_calendar.OrderCalendarTests.test_initial_quantity_and_target_quantity_control_occurrence_count) ... ok
+test_invalid_plan_update_is_transactional (tests.test_order_calendar.OrderCalendarTests.test_invalid_plan_update_is_transactional) ... ok
+test_invalid_primary_is_not_overwritten_without_backup (tests.test_order_calendar.OrderCalendarTests.test_invalid_primary_is_not_overwritten_without_backup) ... ok
+test_manual_record_and_day_override_are_preserved (tests.test_order_calendar.OrderCalendarTests.test_manual_record_and_day_override_are_preserved) ... ok
+test_manual_task_complete_does_not_duplicate (tests.test_order_calendar.OrderCalendarTests.test_manual_task_complete_does_not_duplicate) ... ok
+test_manual_task_edit_does_not_duplicate (tests.test_order_calendar.OrderCalendarTests.test_manual_task_edit_does_not_duplicate) ... ok
+test_manual_task_review_does_not_duplicate (tests.test_order_calendar.OrderCalendarTests.test_manual_task_review_does_not_duplicate) ... ok
+test_pause_does_not_generate_tasks (tests.test_order_calendar.OrderCalendarTests.test_pause_does_not_generate_tasks) ... ok
+test_plan_edit_freezes_past_and_recalculates_today_forward (tests.test_order_calendar.OrderCalendarTests.test_plan_edit_freezes_past_and_recalculates_today_forward) ... ok
+test_preview_and_saved_schedule_match_without_mutating_stages (tests.test_order_calendar.OrderCalendarTests.test_preview_and_saved_schedule_match_without_mutating_stages) ... FAIL
+test_preview_matches_saved_schedule (tests.test_order_calendar.OrderCalendarTests.test_preview_matches_saved_schedule) ... ok
+test_resume_continues_remaining_stage_occurrences (tests.test_order_calendar.OrderCalendarTests.test_resume_continues_remaining_stage_occurrences) ... ok
+test_resume_does_not_backfill_paused_dates (tests.test_order_calendar.OrderCalendarTests.test_resume_does_not_backfill_paused_dates) ... ok
+test_revision_preserves_manual_and_noted_records (tests.test_order_calendar.OrderCalendarTests.test_revision_preserves_manual_and_noted_records) ... ok
+test_same_model_on_different_platforms_remains_independent (tests.test_order_calendar.OrderCalendarTests.test_same_model_on_different_platforms_remains_independent) ... ok
+test_save_failure_does_not_publish_candidate (tests.test_order_calendar.OrderCalendarTests.test_save_failure_does_not_publish_candidate) ... ok
+test_save_plan_without_changes_does_not_reschedule (tests.test_order_calendar.OrderCalendarTests.test_save_plan_without_changes_does_not_reschedule) ... ok
+test_schedule_edit_preserves_past (tests.test_order_calendar.OrderCalendarTests.test_schedule_edit_preserves_past) ... ok
+test_schedule_edit_recalculates_today_and_future (tests.test_order_calendar.OrderCalendarTests.test_schedule_edit_recalculates_today_and_future) ... ok
+test_stage_display_uses_planned_not_actual_quantity (tests.test_order_calendar.OrderCalendarTests.test_stage_display_uses_planned_not_actual_quantity) ... ok
+test_start_date_is_never_bypassed_by_effective_date (tests.test_order_calendar.OrderCalendarTests.test_start_date_is_never_bypassed_by_effective_date) ... ok
+test_v1_data_migrates_in_memory_without_losing_history (tests.test_order_calendar.OrderCalendarTests.test_v1_data_migrates_in_memory_without_losing_history) ... ok
+test_y35_schedule_completion_review_and_missed_status (tests.test_order_calendar.OrderCalendarTests.test_y35_schedule_completion_review_and_missed_status) ... ok
+test_calendar_hover_mapping_and_keyboard_only_focus_ring (tests.test_order_calendar_ui.OrderCalendarUiTests.test_calendar_hover_mapping_and_keyboard_only_focus_ring) ... ok
+test_calendar_is_primary_view_and_shows_schedule (tests.test_order_calendar_ui.OrderCalendarUiTests.test_calendar_is_primary_view_and_shows_schedule) ... ok
+test_custom_date_input_validates_keyboard_text (tests.test_order_calendar_ui.OrderCalendarUiTests.test_custom_date_input_validates_keyboard_text) ... ok
+test_edit_dialog_preview_and_calendar_use_new_start (tests.test_order_calendar_ui.OrderCalendarUiTests.test_edit_dialog_preview_and_calendar_use_new_start) ... ok
+test_manual_edit_complete_review_refreshes_one_record (tests.test_order_calendar_ui.OrderCalendarUiTests.test_manual_edit_complete_review_refreshes_one_record) ... ok
+test_manual_task_saves_platform_and_model_without_plan (tests.test_order_calendar_ui.OrderCalendarUiTests.test_manual_task_saves_platform_and_model_without_plan) ... ok
+test_one_click_completion_and_review_are_saved_immediately (tests.test_order_calendar_ui.OrderCalendarUiTests.test_one_click_completion_and_review_are_saved_immediately) ... ok
+test_pending_review_count_does_not_resize_calendar (tests.test_order_calendar_ui.OrderCalendarUiTests.test_pending_review_count_does_not_resize_calendar) ... ok
+test_plan_dialog_uses_platform_model_and_custom_controls (tests.test_order_calendar_ui.OrderCalendarUiTests.test_plan_dialog_uses_platform_model_and_custom_controls) ... ok
+test_platform_filter_updates_calendar_statistics_detail_and_reviews (tests.test_order_calendar_ui.OrderCalendarUiTests.test_platform_filter_updates_calendar_statistics_detail_and_reviews) ... FAIL
+test_small_window_scrolls_instead_of_shrinking_calendar (tests.test_order_calendar_ui.OrderCalendarUiTests.test_small_window_scrolls_instead_of_shrinking_calendar) ... ok
+test_stage_validation_and_complete_plan_save_flow (tests.test_order_calendar_ui.OrderCalendarUiTests.test_stage_validation_and_complete_plan_save_flow) ... ok
+test_background_remove_page_defaults_and_navigation (tests.test_ui_state.UiStateTests.test_background_remove_page_defaults_and_navigation) ... ok
+test_clicking_watermark_text_opens_recent_choices (tests.test_ui_state.UiStateTests.test_clicking_watermark_text_opens_recent_choices) ... ok
+test_compression_page_defaults_and_file_details (tests.test_ui_state.UiStateTests.test_compression_page_defaults_and_file_details) ... ok
+test_conversion_page_defaults_visibility_settings_and_navigation (tests.test_ui_state.UiStateTests.test_conversion_page_defaults_visibility_settings_and_navigation) ... ok
+test_core_settings_fit_without_a_scroll_area (tests.test_ui_state.UiStateTests.test_core_settings_fit_without_a_scroll_area) ... ok
+test_empty_state_hides_redundant_file_controls (tests.test_ui_state.UiStateTests.test_empty_state_hides_redundant_file_controls) ... ok
+test_file_dialog_reopens_last_source_directory (tests.test_ui_state.UiStateTests.test_file_dialog_reopens_last_source_directory) ... ok
+test_invalid_output_path_disables_processing (tests.test_ui_state.UiStateTests.test_invalid_output_path_disables_processing) ... ok
+test_main_window_uses_frameless_custom_title_bar (tests.test_ui_state.UiStateTests.test_main_window_uses_frameless_custom_title_bar) ... ok
+test_missing_previous_output_falls_back_without_crashing (tests.test_ui_state.UiStateTests.test_missing_previous_output_falls_back_without_crashing) ... ok
+test_missing_source_directory_falls_back_to_user_home (tests.test_ui_state.UiStateTests.test_missing_source_directory_falls_back_to_user_home) ... ok
+test_output_format_controls_and_settings (tests.test_ui_state.UiStateTests.test_output_format_controls_and_settings) ... ok
+test_parameter_controls_ignore_wheel_changes (tests.test_ui_state.UiStateTests.test_parameter_controls_ignore_wheel_changes) ... ok
+test_recent_watermark_text_keeps_three_used_values (tests.test_ui_state.UiStateTests.test_recent_watermark_text_keeps_three_used_values) ... ok
+test_rename_preview_conflict_and_settings (tests.test_ui_state.UiStateTests.test_rename_preview_conflict_and_settings) ... ok
+test_resize_page_modes_preview_settings_and_locking (tests.test_ui_state.UiStateTests.test_resize_page_modes_preview_settings_and_locking) ... ok
+test_restore_defaults_keeps_output_directory (tests.test_ui_state.UiStateTests.test_restore_defaults_keeps_output_directory) ... ok
+test_settings_restore_without_restoring_task (tests.test_ui_state.UiStateTests.test_settings_restore_without_restoring_task) ... ok
+test_start_button_and_single_remove_follow_file_state (tests.test_ui_state.UiStateTests.test_start_button_and_single_remove_follow_file_state) ... ok
+test_task_dialog_clears_inputs_only_after_completed_result_closes (tests.test_ui_state.UiStateTests.test_task_dialog_clears_inputs_only_after_completed_result_closes) ... ok
+test_task_dialog_switches_from_progress_to_result (tests.test_ui_state.UiStateTests.test_task_dialog_switches_from_progress_to_result) ... ok
+test_tiling_only_shows_relevant_fields (tests.test_ui_state.UiStateTests.test_tiling_only_shows_relevant_fields) ... ok
+test_compression_worker_continues_after_failure (tests.test_worker.WorkerTests.test_compression_worker_continues_after_failure) ... ok
+test_conversion_worker_continues_after_failure (tests.test_worker.WorkerTests.test_conversion_worker_continues_after_failure) ... ok
+test_one_failure_does_not_stop_batch (tests.test_worker.WorkerTests.test_one_failure_does_not_stop_batch) ... ok
+test_resize_worker_continues_after_failure (tests.test_worker.WorkerTests.test_resize_worker_continues_after_failure) ... ok
+test_watermark_output_names_keep_input_order (tests.test_worker.WorkerTests.test_watermark_output_names_keep_input_order) ... ok
+
+======================================================================
+FAIL: test_preview_and_saved_schedule_match_without_mutating_stages (tests.test_order_calendar.OrderCalendarTests.test_preview_and_saved_schedule_match_without_mutating_stages)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\data\local-personal-toolbox\tests\test_order_calendar.py", line 77, in test_preview_and_saved_schedule_match_without_mutating_stages
+    self.assertEqual([task["date"] for task in preview], [task["date"] for task in saved])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['2026-09-17', '2026-09-18', '2026-09-20', '2026-09-[83 chars]-09'] != ['2026-09-16', '2026-09-17', '2026-09-18', '2026-09-[83 chars]-02']
+
+First differing element 0:
+'2026-09-17'
+'2026-09-16'
+
+- ['2026-09-17',
+?            ^
+
++ ['2026-09-16',
+?            ^
+
++  '2026-09-17',
+   '2026-09-18',
+   '2026-09-20',
+   '2026-09-22',
+   '2026-09-24',
+   '2026-09-26',
+   '2026-09-28',
+   '2026-09-30',
+-  '2026-10-02',
+?              ^
+
++  '2026-10-02']
+?              ^
+
+-  '2026-10-09']
+
+======================================================================
+FAIL: test_platform_filter_updates_calendar_statistics_detail_and_reviews (tests.test_order_calendar_ui.OrderCalendarUiTests.test_platform_filter_updates_calendar_statistics_detail_and_reviews)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\data\local-personal-toolbox\tests\test_order_calendar_ui.py", line 116, in test_platform_filter_updates_calendar_statistics_detail_and_reviews
+    self.assertEqual(["1", "1", "0", "1"], [label.text() for label in self.page.stats])
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: Lists differ: ['1', '1', '0', '1'] != ['1', '0', '0', '1']
+
+First differing element 1:
+'1'
+'0'
+
+- ['1', '1', '0', '1']
+?       -----
+
++ ['1', '0', '0', '1']
+?            +++++
+
+
+----------------------------------------------------------------------
+Ran 109 tests in 9.161s
+
+FAILED (failures=2)

@@ -44,10 +44,11 @@ QLabel#statValue {{ color: {TEXT_PRIMARY}; font-size: 22px; font-weight: 700; }}
 QLabel#fieldLabel {{ color: #344258; font-size: 13px; font-weight: 500; }}
 QLabel#fieldValue {{ color: {TEXT_SECONDARY}; font-size: 12px; }}
 QLabel#helperText {{ color: {TEXT_SECONDARY}; font-size: 12px; }}
-QLineEdit, QSpinBox, QComboBox {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: {RADIUS_MD}px; padding: 0 12px; min-height: {CONTROL_HEIGHT}px; selection-background-color: {PRIMARY}; }}
-QLineEdit:hover, QSpinBox:hover, QComboBox:hover {{ border-color: #AAB7C8; }}
-QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{ border: 1px solid {FOCUS}; }}
-QLineEdit:disabled, QSpinBox:disabled, QComboBox:disabled {{ background: #EDF0F4; color: {TEXT_DISABLED}; border-color: #E3E7ED; }}
+QLineEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QComboBox, QDateEdit, QTimeEdit {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: {RADIUS_MD}px; padding: 0 12px; min-height: {CONTROL_HEIGHT}px; selection-background-color: {PRIMARY}; }}
+QPlainTextEdit {{ padding: 9px 12px; }}
+QLineEdit:hover, QPlainTextEdit:hover, QSpinBox:hover, QDoubleSpinBox:hover, QComboBox:hover, QDateEdit:hover, QTimeEdit:hover {{ border-color: #AAB7C8; }}
+QLineEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus, QDateEdit:focus, QTimeEdit:focus {{ border: 1px solid {FOCUS}; background: #FCFDFF; }}
+QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled, QDateEdit:disabled, QTimeEdit:disabled {{ background: #EDF0F4; color: {TEXT_DISABLED}; border-color: #E3E7ED; }}
 QLineEdit[error="true"] {{ border: 1px solid {DANGER}; background: #FFF9F9; }}
 QFrame#datePopover {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 10px; }}
 QLabel#datePickerMonth {{ font-size: 15px; font-weight: 700; }}
@@ -64,8 +65,9 @@ QSpinBox::up-button, QSpinBox::down-button {{ width: 28px; border-left: 1px soli
 QSpinBox::up-button {{ subcontrol-position: top right; border-top-right-radius: 7px; }}
 QSpinBox::down-button {{ subcontrol-position: bottom right; border-bottom-right-radius: 7px; border-top: 1px solid {BORDER}; }}
 QSpinBox::up-button:hover, QSpinBox::down-button:hover {{ background: #EEF2F7; }}
-QSpinBox::up-arrow, QSpinBox::down-arrow, QComboBox::down-arrow {{ image: none; width: 0; height: 0; }}
-QComboBox::drop-down {{ width: 30px; border: 0; border-left: 1px solid {BORDER}; background: {SURFACE_HOVER}; }}
+QSpinBox::up-arrow, QSpinBox::down-arrow {{ image: none; width: 0; height: 0; }}
+QComboBox::drop-down {{ width: 30px; border: 0; border-left: 1px solid {BORDER}; background: {SURFACE_HOVER}; border-top-right-radius: 7px; border-bottom-right-radius: 7px; }}
+QComboBox::down-arrow {{ width: 9px; height: 6px; }}
 QComboBox QAbstractItemView {{ background: {SURFACE}; color: {TEXT_PRIMARY}; border: 1px solid {BORDER}; border-radius: {RADIUS_MD}px; padding: 4px; outline: 0; selection-background-color: #E8F0FF; selection-color: #1F57BD; }}
 QComboBox QAbstractItemView::item {{ min-height: 32px; padding: 0 8px; border-radius: {RADIUS_SM}px; }}
 QComboBox QAbstractItemView::item:hover {{ background: #F1F5F9; }}
@@ -102,9 +104,10 @@ QWidget#previewEmpty {{ background: transparent; }}
 QLabel#emptyTitle {{ color: #344258; font-size: 14px; font-weight: 600; }}
 QLabel#emptyHint {{ color: {TEXT_DISABLED}; font-size: 12px; }}
 QDialog#baseDialog {{ background: transparent; }}
-QWidget#dialogShell {{ background: {APP_BACKGROUND}; border: 1px solid {BORDER}; border-radius: {RADIUS_LG}px; }}
-QWidget#dialogContent {{ background: {SURFACE}; border: 0; border-bottom-left-radius: {RADIUS_LG}px; border-bottom-right-radius: {RADIUS_LG}px; }}
-QLabel#dialogTitle {{ color: {TEXT_PRIMARY}; font-size: 18px; font-weight: 700; background: transparent; }}
+QWidget#dialogShell {{ background: #F8FBFF; border: 1px solid #D7E3F5; border-radius: 16px; }}
+QWidget#dialogContent {{ background: {SURFACE}; border: 0; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px; }}
+QLabel#dialogTitle {{ color: #102A56; font-size: 18px; font-weight: 700; background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #F6FAFF, stop:1 #EEF5FF); border-top-left-radius: 16px; border-top-right-radius: 16px; }}
+QWidget#dialogFooter {{ border-top: 1px solid #E7EEF8; padding-top: 14px; }}
 QScrollArea#planDialogScroll, QScrollArea#planDialogScroll > QWidget > QWidget {{ background: {SURFACE}; border: 0; }}
 QLabel#sectionTitle {{ color: {TEXT_PRIMARY}; font-size: 15px; font-weight: 700; }}
 QLabel#sectionHint {{ color: {TEXT_SECONDARY}; font-size: 12px; }}
@@ -145,6 +148,66 @@ QProgressBar::chunk {{ background: {PRIMARY}; border-radius: 4px; }}
 QProgressBar#monitorProgressBar {{ min-height: 26px; max-height: 26px; border-radius: 6px; }}
 QProgressBar#monitorProgressBar::chunk {{ background: #93C5FD; border-radius: 6px; }}
 QLabel#monitorProgressText {{ color: #16345F; font-weight: 700; background: transparent; }}
+QFrame#monitorHero {{ background: qlineargradient(x1:0, y1:0, x2:1, y2:0, stop:0 #0B1A33, stop:1 #153B6C); border: 1px solid #244B7E; border-radius: 16px; }}
+QLabel#monitorEyebrow {{ color: #80B8EC; font-size: 10px; font-weight: 700; letter-spacing: 1px; }}
+QLabel#monitorPageTitle {{ color: #F7FAFC; font-size: 26px; font-weight: 700; }}
+QLabel#monitorPageSubtitle {{ color: #B8C9DC; font-size: 13px; }}
+QLabel#monitorLive {{ color: #D5E4F5; background: #173D6C; border: 1px solid #315B90; border-radius: 8px; padding: 5px 9px; font-size: 12px; font-weight: 600; }}
+QLabel#monitorHeroHint {{ color: #9EB4CC; font-size: 11px; }}
+QTabWidget#monitorTabs::pane {{ background: transparent; border: 0; top: -1px; }}
+QTabWidget#monitorTabs QTabBar {{ background: #E9EFF6; border: 1px solid #D9E2ED; border-radius: 10px; padding: 3px; }}
+QTabWidget#monitorTabs QTabBar::tab {{ background: transparent; color: #5C6E84; border: 0; min-height: 38px; padding: 0 24px; margin: 0; border-radius: 7px; }}
+QTabWidget#monitorTabs QTabBar::tab:hover {{ background: #F5F8FC; color: #173E70; }}
+QTabWidget#monitorTabs QTabBar::tab:selected {{ background: #FFFFFF; color: #153B6C; font-weight: 700; border: 1px solid #D5DFEC; }}
+QFrame#monitorCard, QFrame#batchBar, QFrame#monitorToolbar {{ background: {SURFACE}; border: 1px solid #DDE5EE; border-radius: 12px; }}
+QFrame#monitorToolbar {{ background: #FBFCFE; }}
+QFrame#batchBar {{ background: #EAF3FF; border-color: #BFD7FB; }}
+QLineEdit#monitorSearch {{ background: #F9FBFF; border-color: #C9DCF7; border-radius: 10px; min-height: 40px; }}
+QLineEdit#monitorSearch:focus {{ background: #FFFFFF; border: 2px solid #5C99FF; }}
+QCheckBox#filterChip {{ color: #385474; background: #FFFFFF; border: 1px solid #CADAF1; border-radius: 10px; padding: 0 10px; min-height: 38px; spacing: 7px; font-weight: 600; }}
+QCheckBox#filterChip:hover {{ background: #F1F6FF; border-color: #8FB9F8; }}
+QCheckBox#filterChip:checked {{ color: #1556CC; background: #E7F0FF; border-color: #80AEF8; }}
+QCheckBox#filterChip::indicator {{ width: 14px; height: 14px; border-radius: 4px; }}
+QPushButton#monitorPrimary {{ color: white; background: #174A88; border: 1px solid #174A88; border-radius: 8px; min-height: 40px; padding: 0 15px; font-weight: 700; }}
+QPushButton#monitorPrimary:hover {{ background: #103966; border-color: #103966; }}
+QPushButton#monitorCollect {{ color: #174A88; background: #FFFFFF; border: 1px solid #B7C9DE; border-radius: 8px; min-height: 40px; padding: 0 14px; font-weight: 700; }}
+QPushButton#monitorCollect:hover {{ background: #F1F6FC; border-color: #7897B9; }}
+QPushButton#monitorQuiet {{ color: #52667E; background: transparent; border: 1px solid transparent; border-radius: 8px; min-height: 40px; padding: 0 9px; }}
+QPushButton#monitorQuiet:hover {{ color: #173E70; background: #EFF4FA; border-color: #D9E4F0; }}
+QLabel#productTitle {{ color: #10264A; font-size: 13px; font-weight: 800; line-height: 1.3; }}
+QLabel#productMeta {{ color: #7186A4; font-size: 12px; }}
+QLabel#monitorMeta {{ color: {TEXT_SECONDARY}; }}
+QFrame#statCard {{ background: #FFFFFF; border: 1px solid #DDE5EE; border-radius: 12px; min-height: 76px; }}
+QFrame#statCard[tone="primary"] {{ background: #102D55; border-color: #102D55; }}
+QFrame#statCard[tone="primary"] QLabel#statLabel {{ color: #B5C9E0; }}
+QFrame#statCard[tone="primary"] QLabel#statValue {{ color: #FFFFFF; }}
+QFrame#statCard[tone="cyan"] QLabel#statValue, QFrame#statCard[tone="violet"] QLabel#statValue, QFrame#statCard[tone="orange"] QLabel#statValue, QFrame#statCard[tone="rose"] QLabel#statValue {{ color: #183B66; }}
+QTableWidget#monitorTable {{ background: #FFFFFF; alternate-background-color: #F7FAFF; border: 1px solid #D6E4F7; border-radius: 16px; gridline-color: transparent; outline: 0; }}
+QTableWidget#monitorTable::item {{ color: #20385C; padding: 9px 8px; border-bottom: 1px solid #EDF3FC; }}
+QTableWidget#monitorTable::item:hover {{ background: #F1F7FF; }}
+QTableWidget#monitorTable::item:selected {{ background: #E3F0FF; color: #124FAE; }}
+QTableWidget#monitorTable QHeaderView::section {{ background: #F1F6FF; color: #426080; border: 0; border-bottom: 1px solid #CEDDF3; padding: 11px 8px; font-weight: 800; }}
+QDateEdit#monitorDate, QLineEdit#monitorTime {{ background: #FFFFFF; border: 1px solid #C6D9F3; border-radius: 9px; min-height: 38px; padding: 0 10px; color: #1C3B66; font-weight: 600; }}
+QDateEdit#monitorDate:hover, QLineEdit#monitorTime:hover {{ border-color: #76A8F4; background: #F8FBFF; }}
+QDateEdit#monitorDate:focus, QLineEdit#monitorTime:focus {{ border: 2px solid #5E98F8; }}
+QDateEdit#monitorDate::drop-down {{ width: 28px; border: 0; border-left: 1px solid #D6E4F7; background: #F1F6FF; border-top-right-radius: 8px; border-bottom-right-radius: 8px; }}
+QLineEdit#monitorNumber {{ background: #FFFFFF; border: 1px solid #C6D9F3; border-radius: 9px; min-height: 38px; padding: 0 10px; color: #1C3B66; font-weight: 600; }}
+QLineEdit#monitorNumber:hover {{ border-color: #76A8F4; background: #F8FBFF; }}
+QLineEdit#monitorNumber:focus {{ border: 2px solid #5E98F8; }}
+QLabel#statusTag {{ color: #176B45; background: #EAF7F0; border: 1px solid #C9ECDD; border-radius: 11px; padding: 3px 8px; margin: 18px 6px; font-size: 12px; font-weight: 700; }}
+QLabel#statusTag[status="暂停"] {{ color: #6B7280; background: #EEF1F4; }}
+QLabel#statusTag[status="异常"], QLabel#statusTag[status="采集失败"] {{ color: #B42318; background: #FEF0F0; }}
+QLabel#statusTag[status="采集中"] {{ color: #1F57BD; background: #E8F0FF; }}
+QLabel#trendPlaceholder {{ color: {TEXT_DISABLED}; background: #F8FAFC; border: 1px dashed #D8E0EA; border-radius: 7px; padding: 14px; qproperty-alignment: AlignCenter; }}
+QLabel#monitorEmpty {{ color: {TEXT_SECONDARY}; background: {SURFACE}; border: 1px solid {BORDER}; border-radius: {RADIUS_LG}px; padding: 32px; }}
+QPushButton#segmentButton {{ min-width: 64px; border-radius: 0; margin-right: -1px; }}
+QPushButton#segmentButton:hover {{ background: #F1F5F9; }}
+QPushButton#segmentButton:checked {{ color: #1F57BD; background: #E8F0FF; border-color: #B8CCF2; }}
+QToolButton#rowMenu {{ color: #60718A; background: transparent; border: 0; border-radius: 8px; min-width: 36px; min-height: 36px; font-size: 18px; font-weight: 700; }}
+QToolButton#rowMenu:hover {{ color: #1859C9; background: #EAF2FF; }}
+QMenu {{ background: {SURFACE}; border: 1px solid #D6E2F1; border-radius: 10px; padding: 6px; }}
+QMenu::item {{ min-width: 140px; padding: 9px 18px; border-radius: 7px; }}
+QMenu::item:selected {{ background: #E8F1FF; color: #1859C9; }}
 QSplitter#workspaceSplitter::handle {{ background: transparent; width: 14px; }}
 QScrollArea {{ border: 0; }}
 QScrollBar:vertical {{ background: transparent; width: 8px; margin: 0; }}
