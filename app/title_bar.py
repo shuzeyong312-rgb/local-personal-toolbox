@@ -5,24 +5,38 @@ from app.icons import icon
 
 
 class TitleBar(QWidget):
-    HEIGHT = 48
+    HEIGHT = 36
 
     def __init__(self, window) -> None:
-        super().__init__(objectName="titleBar")
+        super().__init__(objectName="chromeTitleBar")
         self.host_window = window
         self.setFixedHeight(self.HEIGHT)
+        self.setStyleSheet(
+            """
+            QWidget#chromeTitleBar { background: transparent; }
+            QPushButton#chromeButton, QPushButton#chromeCloseButton {
+                min-width: 44px; max-width: 44px;
+                min-height: 36px; max-height: 36px;
+                padding: 0; border: 0; border-radius: 0;
+                background: transparent;
+            }
+            QPushButton#chromeButton:hover { background: rgba(225, 232, 242, 150); }
+            QPushButton#chromeCloseButton:hover { background: #E81123; }
+            """
+        )
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addStretch()
-        minimize = QPushButton(objectName="windowButton")
-        self.maximize = QPushButton(objectName="windowButton")
-        close = QPushButton(objectName="closeButton")
+
+        minimize = QPushButton(objectName="chromeButton")
+        self.maximize = QPushButton(objectName="chromeButton")
+        close = QPushButton(objectName="chromeCloseButton")
         for button in (minimize, self.maximize, close):
-            button.setIconSize(QSize(16, 16))
-        minimize.setIcon(icon("minimize", "#334155", 16))
-        self.maximize.setIcon(icon("maximize", "#334155", 15))
-        close.setIcon(icon("close", "#334155", 16))
+            button.setIconSize(QSize(15, 15))
+        minimize.setIcon(icon("minimize", "#5E6B80", 15))
+        self.maximize.setIcon(icon("maximize", "#5E6B80", 14))
+        close.setIcon(icon("close", "#5E6B80", 15))
         minimize.setToolTip("最小化")
         self.maximize.setToolTip("最大化")
         close.setToolTip("关闭")
@@ -39,7 +53,7 @@ class TitleBar(QWidget):
 
     def update_state(self) -> None:
         name = "restore" if self.host_window.isMaximized() else "maximize"
-        self.maximize.setIcon(icon(name, "#334155", 15))
+        self.maximize.setIcon(icon(name, "#5E6B80", 14))
         self.maximize.setToolTip("还原" if self.host_window.isMaximized() else "最大化")
 
     def mousePressEvent(self, event) -> None:
