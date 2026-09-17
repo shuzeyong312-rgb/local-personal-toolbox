@@ -1,7 +1,7 @@
 from PySide6.QtCore import QThread, Signal
 
 from services.competitor_monitor_batch import MAX_PARALLEL_COLLECTIONS, collect_batch
-from services.competitor_monitor_collection import BackgroundChromeEnvironment as ChromeEnvironment, PlaywrightCollector
+from services.competitor_monitor_window import BackgroundChromeEnvironment as ChromeEnvironment, PlaywrightCollector
 
 
 class CollectionWorker(QThread):
@@ -33,7 +33,7 @@ class CollectionWorker(QThread):
         total = len(self.competitors)
         counts = {"success": 0, "partial": 0, "failed": 0}
         parallel = min(MAX_PARALLEL_COLLECTIONS, total)
-        self.state.emit(f"正在并行采集（最多 {parallel} 个商品同时进行）")
+        self.state.emit(f"正在后台并行采集（最多 {parallel} 个商品同时进行）")
         collector = PlaywrightCollector(self.cdp_url)
 
         for item, result in collect_batch(
