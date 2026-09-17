@@ -55,7 +55,8 @@ class MainWindow(QMainWindow):
         self.title_bar = TitleBar(self)
         main_layout.addWidget(self.title_bar)
 
-        self.pages = QStackedWidget()
+        self.pages = QStackedWidget(objectName="mainStack")
+        self.pages.setStyleSheet("QStackedWidget#mainStack { background: transparent; border: 0; }")
         self.dashboard_page = DashboardPage()
         self.watermark_page = WatermarkPage()
         self.resize_page = ResizePage()
