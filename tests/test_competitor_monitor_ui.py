@@ -3,11 +3,12 @@ import unittest
 from pathlib import Path
 
 from PySide6.QtCore import QTime
-from PySide6.QtWidgets import QApplication, QLabel, QToolButton
+from PySide6.QtWidgets import QApplication, QLabel
 
 from services.competitor_monitor import CollectionResult, normalize_collection
 from tests.test_competitor_monitor import complete_raw
-from tools.competitor_monitor.page import CompetitorMonitorPage, MonitorNumberField, MonitorTimeField, ProductCell, format_event_parts
+from tools.competitor_monitor.page import MonitorNumberField, MonitorTimeField, ProductCell, format_event_parts
+from tools.competitor_monitor.product_view import CompetitorMonitorPage, StatusBadge
 
 
 class CompetitorMonitorUiTests(unittest.TestCase):
@@ -31,12 +32,45 @@ class CompetitorMonitorUiTests(unittest.TestCase):
             competitor_id, CollectionResult("success", normalize_collection(complete_raw()))
         )
         self.page.refresh(); self.page.table.selectRow(0); self.page.show_latest()
-        self.assertEqual(("A404", "¥45 – ¥50", "已售1300+台", "正常"),
-                         tuple(self.page.table.item(0, column).text() for column in (0, 1, 2, 6)))
-        self.assertIn("佛山淘趣科技有限公司 · 未分组", self.page.table.cellWidget(0, 0).text())
+        self.assertEqual(("¥45–50", "已售1300+台"),
+                         tuple(self.page.table.item(0, column).text() for column in (1, 2)))
+        self.assertIn("暖手宝", self.page.table.cellWidget(0, 0).text())
+        self.assertIn("佛山淘趣科技有限公司 · 未分组 · A404", self.page.table.cellWidget(0, 0).text())
+        status = self.page.table.cellWidget(0, 6)
+        self.assertIsInstance(status, StatusBadge)
+        self.assertEqual("正常", status.text())
+        self.assertEqual("", self.page.table.item(0, 6).text())
         self.assertIn("白色", self.page.detail.text())
         self.page.toggle_selected()
         self.assertEqual("暂停", self.page.store.competitor(competitor_id)["status"])
+
+    def test_product_and_status_cells_use_single_visible_layer(self):
+        competitor_id, _ = self.page.store.add_competitor(
+            "https://detail.1688.com/offer/976443859503.html", alias="A404"
+        )
+        self.page.store.save_collection(
+            competitor_id, CollectionResult("success", normalize_collection(complete_raw()))
+        )
+        self.page.refresh()
+        self.assertEqual("", self.page.table.item(0, 0).text())
+        self.assertIsInstance(self.page.table.cellWidget(0, 0), ProductCell)
+        self.assertEqual("", self.page.table.item(0, 6).text())
+        self.assertIsInstance(self.page.table.cellWidget(0, 6), StatusBadge)
+
+    def test_partial_collection_is_presented_as_data_missing_not_failure(self):
+        competitor_id, _ = self.page.store.add_competitor(
+            "https://detail.1688.com/offer/976443859503.html"
+        )
+        raw = complete_raw()
+        raw["assistant"]["month_distribution_raw"] = "unavailable"
+        data = normalize_collection(raw)
+        self.assertEqual("partial", data["collection_status"])
+        self.page.store.save_collection(competitor_id, CollectionResult("partial", data))
+        self.page.refresh()
+        status = self.page.table.cellWidget(0, 6)
+        self.assertEqual("数据缺失", status.text())
+        self.assertIn("月铺货", status.toolTip())
+        self.assertNotEqual("采集失败", status.text())
 
     def test_price_event_is_presented_as_business_text(self):
         event = {"title": "价格变化", "detail_json": '{"before":["¥45.00"],"after":["¥50.00"],"change_percent":11.11}'}
@@ -45,7 +79,7 @@ class CompetitorMonitorUiTests(unittest.TestCase):
     def test_long_product_name_is_capped_at_two_lines_with_full_tooltip(self):
         name = "超长竞品名称" * 12
         cell = ProductCell(name, "店铺", "未分组")
-        cell.resize(260, 72)
+        cell.resize(260, 76)
         self.assertLessEqual(cell.title.text().count("\n") + 1, 2)
         self.assertTrue(cell.title.text().endswith("…"))
         self.assertIn(name, cell.toolTip())
