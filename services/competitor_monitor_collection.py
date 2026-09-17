@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import ctypes
 import json
 import subprocess
+import sys
 import time
+from ctypes import wintypes
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -33,13 +36,96 @@ BASIC_FIELDS = (
     "min_order_qty",
 )
 
+SW_MINIMIZE = 6
+CREATE_NO_WINDOW = 0x08000000
+
+
+def _monitor_chrome_pids(profile: Path) -> set[int]:
+    """Return Chrome process ids that belong to the dedicated monitor profile."""
+    if not sys.platform.startswith("win"):
+        return set()
+
+    profile_text = str(profile).replace("'", "''")
+    script = (
+        f"$profile='{profile_text}';"
+        "Get-CimInstance Win32_Process -Filter \"Name='chrome.exe'\" | "
+        "Where-Object { $_.CommandLine -and ("
+        "$_.CommandLine -like ('*' + $profile + '*') -or "
+        "$_.CommandLine -like '*--remote-debugging-port=9222*') } | "
+        "Select-Object -ExpandProperty ProcessId"
+    )
+    try:
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-Command", script],
+            capture_output=True,
+            text=True,
+            check=False,
+            creationflags=CREATE_NO_WINDOW,
+        )
+    except OSError:
+        return set()
+    if result.returncode:
+        return set()
+
+    pids = set()
+    for line in result.stdout.splitlines():
+        try:
+            pids.add(int(line.strip()))
+        except ValueError:
+            continue
+    return pids
+
+
+def _minimize_process_windows(pids: set[int]) -> int:
+    """Minimize visible top-level windows owned by the supplied process ids."""
+    if not pids or not sys.platform.startswith("win"):
+        return 0
+
+    user32 = ctypes.windll.user32
+    minimized = 0
+    callback_type = ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+
+    @callback_type
+    def callback(hwnd, _lparam):
+        nonlocal minimized
+        process_id = wintypes.DWORD()
+        user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
+        if process_id.value in pids and user32.IsWindowVisible(hwnd):
+            user32.ShowWindow(hwnd, SW_MINIMIZE)
+            minimized += 1
+        return True
+
+    user32.EnumWindows(callback, 0)
+    return minimized
+
+
+def minimize_monitor_chrome(profile: Path, retries: int = 8, delay: float = 0.25) -> bool:
+    """Force an already-running or newly-started monitor Chrome window to the taskbar."""
+    pids = _monitor_chrome_pids(profile)
+    if not pids:
+        return False
+    for attempt in range(max(1, retries)):
+        if _minimize_process_windows(pids):
+            return True
+        if attempt + 1 < retries:
+            time.sleep(delay)
+    return False
+
 
 class BackgroundChromeEnvironment(ChromeEnvironment):
-    """Start the dedicated monitor Chrome minimized for unattended collection.
+    """Use the real dedicated Chrome session while keeping its window out of the way.
 
-    Manual recovery still uses the base ``open_browser`` behavior, so login problems can be
-    handled in a visible browser when the user explicitly asks to open it.
+    ``--start-minimized`` alone is not reliable when Chrome restores a previous window or is
+    already running. After CDP is ready we therefore locate the dedicated Chrome process and
+    explicitly minimize its top-level Windows window. Manual recovery still opens Chrome
+    visibly so login or verification can be handled by the user.
     """
+
+    def ensure(self, timeout: float = 15):
+        result = super().ensure(timeout)
+        if result.ready:
+            minimize_monitor_chrome(self.PROFILE)
+        return result
 
     def _start_chrome(self, url: str | None = None) -> None:
         if url:
@@ -108,8 +194,6 @@ class PlaywrightCollector:
                             technical_error=f"HTTP 404: {url}",
                         )
 
-                    # Wait for the structures that feed the actual monitor columns instead of
-                    # using a fixed sleep or waiting on every optional analytics field.
                     try:
                         page.wait_for_function(
                             """() => {
@@ -121,11 +205,8 @@ class PlaywrightCollector:
                             }""",
                             timeout=20000,
                         )
-                        # Let late-rendered counters settle after the main structures appear.
                         page.wait_for_timeout(1200)
                     except PlaywrightTimeoutError:
-                        # Still inspect the page. Missing monitor fields below will trigger the
-                        # single retry instead of silently accepting an early partial snapshot.
                         pass
 
                     raw = page.evaluate(self.extractor.read_text(encoding="utf-8"))
@@ -175,8 +256,6 @@ class PlaywrightCollector:
                 )
 
             data = normalize_collection(raw)
-            # Any missing monitor-critical field deserves one fresh-page retry. Auxiliary or
-            # basic-field gaps do not trigger a retry and do not mark the row as incomplete.
             return CollectionResult(
                 data["collection_status"],
                 data=data,
