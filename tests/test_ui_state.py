@@ -81,12 +81,11 @@ class UiStateTests(unittest.TestCase):
             self.assertIn("40 × 30", page.image_info.text())
 
             window = MainWindow()
-            self.assertEqual(["图片工具", "批量打水印", "修改图片尺寸", "白底转透明", "批量图片压缩", "图片格式转换", "文件工具", "批量重命名", "电商运营", "出单日历", "1688竞品监控"],
+            self.assertEqual(["所有工具", "图片工具", "批量打水印", "修改图片尺寸", "白底转透明", "批量图片压缩", "图片格式转换", "文件工具", "批量重命名", "电商运营", "出单日历", "1688竞品监控"],
                              [window.navigation.item(i).text() for i in range(window.navigation.count())])
-            window.navigation.setCurrentRow(9)
-            self.assertEqual(6, window.pages.currentIndex())
+            window.open_tool("order_calendar")
+            self.assertIs(window.pages.currentWidget(), window.order_calendar_page)
             window.close()
-
     def test_compression_page_defaults_and_file_details(self) -> None:
         with tempfile.TemporaryDirectory() as name:
             source = Path(name) / "商品.png"
@@ -188,6 +187,23 @@ class UiStateTests(unittest.TestCase):
             page._remove_item(page.file_list.item(0))
             self.assertEqual([], page.sources)
 
+    def test_dashboard_filters_and_opens_tool_cards(self) -> None:
+        window = MainWindow()
+        window.show()
+        self.app.processEvents()
+        window.title_bar.search.setText("WebP")
+        self.app.processEvents()
+        self.assertTrue(window.dashboard_page.cards["conversion"].isVisible())
+        self.assertFalse(window.dashboard_page.cards["watermark"].isVisible())
+        window.dashboard_page.cards["conversion"].click()
+        self.app.processEvents()
+        self.assertIs(window.pages.currentWidget(), window.conversion_page)
+        self.assertFalse(window.dock.isVisible())
+        window.title_bar.back.click()
+        self.app.processEvents()
+        self.assertIs(window.pages.currentWidget(), window.dashboard_page)
+        self.assertTrue(window.dock.isVisible())
+        window.close()
     def test_main_window_uses_frameless_custom_title_bar(self) -> None:
         window = MainWindow()
         self.assertTrue(window.windowFlags() & Qt.WindowType.FramelessWindowHint)
@@ -196,12 +212,18 @@ class UiStateTests(unittest.TestCase):
         window.resize(1080, 700)
         window.show()
         self.app.processEvents()
+        self.assertIs(window.pages.currentWidget(), window.dashboard_page)
+        self.assertTrue(window.dock.isVisible())
+        window.open_tool("watermark")
+        self.app.processEvents()
         splitter = window.findChild(QSplitter, "workspaceSplitter")
         self.assertGreaterEqual(splitter.widget(0).width(), 400)
         self.assertGreaterEqual(splitter.widget(1).width(), 340)
         self.assertTrue(window.watermark_page.start_button.isVisible())
+        self.assertFalse(window.dock.isVisible())
+        window.show_dashboard()
+        self.assertTrue(window.dock.isVisible())
         window.close()
-
     def test_parameter_controls_ignore_wheel_changes(self) -> None:
         page = WatermarkPage()
         self.assertIsInstance(page.font_size, AppSpinBox)

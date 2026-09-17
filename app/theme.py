@@ -1,25 +1,25 @@
-APP_BACKGROUND = "#F5F7FA"
+APP_BACKGROUND = "#F7F8FA"
 SURFACE = "#FFFFFF"
-SURFACE_HOVER = "#F8FAFC"
-SIDEBAR = "#111827"
-PRIMARY = "#3478F6"
-PRIMARY_HOVER = "#2563EB"
-TEXT_PRIMARY = "#111827"
-TEXT_SECONDARY = "#64748B"
-TEXT_DISABLED = "#A1AAB8"
-BORDER = "#DDE3EB"
+SURFACE_HOVER = "#F4F6FA"
+SIDEBAR = "#FFFFFF"
+PRIMARY = "#2563EB"
+PRIMARY_HOVER = "#3478F6"
+TEXT_PRIMARY = "#172033"
+TEXT_SECONDARY = "#71809C"
+TEXT_DISABLED = "#A0AABD"
+BORDER = "#E7EAF0"
 FOCUS = PRIMARY
 SUCCESS = "#16A34A"
 WARNING = "#D97706"
 DANGER = "#DC2626"
-CONTROL_HEIGHT = 38
-RADIUS_SM = 4
-RADIUS_MD = 8
-RADIUS_LG = 10
+CONTROL_HEIGHT = 40
+RADIUS_SM = 8
+RADIUS_MD = 12
+RADIUS_LG = 18
 
 
 STYLE = f"""
-QWidget {{ color: {TEXT_PRIMARY}; font-family: "Microsoft YaHei UI"; font-size: 14px; }}
+QWidget {{ color: {TEXT_PRIMARY}; font-family: "Segoe UI Variable", "Microsoft YaHei UI"; font-size: 14px; }}
 QMainWindow, QWidget#appRoot, QWidget#page, QStackedWidget, QScrollArea#settingsScroll {{ background: {APP_BACKGROUND}; }}
 QWidget#sidebar {{ background: {SIDEBAR}; }}
 QLabel#brand {{ color: #F8FAFC; font-size: 20px; font-weight: 700; }}
@@ -213,4 +213,44 @@ QScrollArea {{ border: 0; }}
 QScrollBar:vertical {{ background: transparent; width: 8px; margin: 0; }}
 QScrollBar::handle:vertical {{ background: #CBD5E1; border-radius: 4px; min-height: 30px; }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0; }}
+
+/* Phase 1: Personal Toolbox app shell and dashboard */
+QMainWindow, QWidget#appRoot, QWidget#mainArea, QWidget#dashboardPage, QScrollArea#dashboardScroll, QWidget#dashboardContent {{ background: {APP_BACKGROUND}; }}
+QWidget#sidebar {{ background: {SIDEBAR}; border-right: 1px solid {BORDER}; }}
+QLabel#brand {{ color: {TEXT_PRIMARY}; font-size: 14px; font-weight: 700; }}
+QLabel#brandHint {{ color: {TEXT_SECONDARY}; font-size: 11px; }}
+QLabel#privacy {{ color: #97A3B5; font-size: 11px; padding: 12px 8px 0; }}
+QListWidget#navigation {{ background: transparent; color: {TEXT_SECONDARY}; border: 0; outline: 0; padding: 0 4px; }}
+QListWidget#navigation::item {{ min-height: 40px; padding: 0 10px; border-radius: 10px; margin: 2px 0; }}
+QListWidget#navigation::item:hover {{ background: #F1F5FB; color: {TEXT_PRIMARY}; }}
+QListWidget#navigation::item:selected {{ background: #EAF1FF; color: {PRIMARY}; font-weight: 600; }}
+QWidget#titleBar {{ background: {APP_BACKGROUND}; border-bottom: 1px solid {BORDER}; }}
+QFrame#globalSearchShell {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 12px; min-height: 42px; max-width: 580px; }}
+QFrame#globalSearchShell:focus-within {{ border: 1px solid {PRIMARY}; }}
+QLineEdit#globalSearch {{ background: transparent; border: 0; min-height: 40px; padding: 0; color: {TEXT_PRIMARY}; }}
+QLineEdit#globalSearch:focus {{ background: transparent; border: 0; }}
+QPushButton#headerBackButton {{ min-width: 38px; max-width: 38px; min-height: 38px; max-height: 38px; padding: 0; border-radius: 10px; background: transparent; border: 1px solid transparent; }}
+QPushButton#headerBackButton:hover {{ background: #EEF3FA; border-color: #DCE5F2; }}
+QLabel#headerTitle {{ color: {TEXT_PRIMARY}; font-size: 14px; font-weight: 700; }}
+QLabel#headerDescription {{ color: {TEXT_SECONDARY}; font-size: 11px; }}
+QPushButton#windowButton, QPushButton#closeButton {{ min-width: 42px; max-width: 42px; min-height: 64px; max-height: 64px; }}
+QLabel#dashboardTitle {{ color: {TEXT_PRIMARY}; font-size: 28px; font-weight: 700; }}
+QLabel#dashboardSubtitle {{ color: {TEXT_SECONDARY}; font-size: 13px; }}
+QLabel#toolCount {{ color: #526175; background: #EEF3F8; border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 600; }}
+QLabel#dashboardEmpty {{ color: {TEXT_SECONDARY}; background: {SURFACE}; border: 1px dashed #CCD6E4; border-radius: 16px; padding: 42px; }}
+QToolButton#toolCard {{ background: {SURFACE}; border: 1px solid {BORDER}; border-radius: 18px; text-align: left; padding: 0; }}
+QToolButton#toolCard:hover {{ background: #FCFDFF; border-color: #B7C9E6; }}
+QToolButton#toolCard:focus {{ border: 2px solid {PRIMARY}; }}
+QLabel#toolCardIcon {{ background: #EAF1FF; border-radius: 9px; min-width: 34px; max-width: 34px; min-height: 34px; max-height: 34px; qproperty-alignment: AlignCenter; }}
+QLabel#toolCardCategory {{ color: {TEXT_SECONDARY}; font-size: 11px; font-weight: 600; }}
+QLabel#toolCardArrow {{ color: #97A3B5; font-size: 15px; }}
+QLabel#toolCardTitle {{ color: {TEXT_PRIMARY}; font-size: 16px; font-weight: 700; background: transparent; }}
+QLabel#toolCardDescription {{ color: {TEXT_SECONDARY}; font-size: 12px; background: transparent; }}
+QFrame#toolPreview {{ background: #F6F8FC; border: 1px solid #EEF1F5; border-radius: 10px; }}
+QLabel#toolPreviewValue {{ color: #40516A; font-size: 11px; font-weight: 600; background: transparent; }}
+QLabel#toolPreviewArrow {{ color: {PRIMARY}; font-size: 14px; font-weight: 700; background: transparent; }}
+QFrame#floatingDock {{ background: {SURFACE}; border: 1px solid #DFE6EF; border-radius: 20px; }}
+QToolButton#dockButton {{ color: #5A687C; background: transparent; border: 1px solid transparent; border-radius: 12px; min-width: 72px; min-height: 52px; padding: 3px 6px; font-size: 10px; }}
+QToolButton#dockButton:hover {{ color: {PRIMARY}; background: #EEF4FF; border-color: #E0EAFA; }}
+QToolButton#dockButton:focus {{ border-color: {PRIMARY}; }}
 """
