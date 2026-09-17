@@ -7,8 +7,9 @@ from datetime import datetime
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from services.competitor_monitor import ChromeEnvironment, MonitorStore
-from services.competitor_monitor_collection import PlaywrightCollector
+from services.competitor_monitor import MonitorStore
+from services.competitor_monitor_batch import MAX_PARALLEL_COLLECTIONS, collect_batch
+from services.competitor_monitor_collection import BackgroundChromeEnvironment, PlaywrightCollector
 
 
 def _now() -> str:
@@ -66,7 +67,7 @@ class AutoMonitor:
         self.store = store; self.scheduled_time = scheduled_time
         self.price_threshold = price_threshold; self.sales_threshold = sales_threshold
         self.notification_enabled = notification_enabled
-        self.environment = environment or ChromeEnvironment(cdp_url)
+        self.environment = environment or BackgroundChromeEnvironment(cdp_url)
         self.collector = collector or PlaywrightCollector(cdp_url)
         self.notifier = notifier
 
@@ -85,22 +86,25 @@ class AutoMonitor:
             return "environment_failed"
         first_event = self.store.latest_event_id()
         counts = {"success": 0, "partial": 0, "failed": 0}
-        for competitor in competitors:
-            try:
-                result = self.collector.collect(competitor["url"])
-            except Exception as exc:
-                self.store.finish_run(run_id, "failed", **counts, error=str(exc), now=_now())
-                if self.notification_enabled: self.notifier("1688竞品监控自动采集失败", str(exc))
-                return "failed"
-            if result.environment_error:
-                self.store.finish_run(run_id, "environment_failed", **counts,
-                                      error=result.technical_error or result.error, now=_now())
-                if self.notification_enabled: self.notifier("1688竞品监控自动采集失败", result.error)
-                return "environment_failed"
-            counts[result.status] += 1
-            self.store.save_collection(competitor["id"], result,
-                                       price_threshold=self.price_threshold,
-                                       sales_threshold=self.sales_threshold)
+        parallel = min(MAX_PARALLEL_COLLECTIONS, max(1, len(competitors)))
+
+        try:
+            results = collect_batch(competitors, self.collector, max_workers=parallel)
+            for competitor, result in results:
+                if result.environment_error:
+                    self.store.finish_run(run_id, "environment_failed", **counts,
+                                          error=result.technical_error or result.error, now=_now())
+                    if self.notification_enabled: self.notifier("1688竞品监控自动采集失败", result.error)
+                    return "environment_failed"
+                counts[result.status] += 1
+                self.store.save_collection(competitor["id"], result,
+                                           price_threshold=self.price_threshold,
+                                           sales_threshold=self.sales_threshold)
+        except Exception as exc:
+            self.store.finish_run(run_id, "failed", **counts, error=str(exc), now=_now())
+            if self.notification_enabled: self.notifier("1688竞品监控自动采集失败", str(exc))
+            return "failed"
+
         self.store.finish_run(run_id, "completed", **counts, now=_now())
         if self.notification_enabled:
             self._notify(self.store.events_after(first_event))
