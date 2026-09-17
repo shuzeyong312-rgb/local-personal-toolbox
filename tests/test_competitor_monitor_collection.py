@@ -2,7 +2,11 @@ import unittest
 from unittest.mock import patch
 
 from services.competitor_monitor import CollectionResult
-from services.competitor_monitor_collection import PlaywrightCollector, normalize_collection
+from services.competitor_monitor_collection import (
+    PlaywrightCollector,
+    merge_raw_samples,
+    normalize_collection,
+)
 from tests.test_competitor_monitor import complete_raw
 
 
@@ -34,25 +38,62 @@ class CompetitorCollectionPolicyTests(unittest.TestCase):
         self.assertEqual([], data["missing_fields"])
         self.assertEqual(["min_order_qty"], data["basic_missing_fields"])
 
-    def test_monitor_field_missing_marks_snapshot_partial(self):
+    def test_sold_count_missing_is_optional_when_stable_monitor_fields_exist(self):
         raw = complete_raw()
         raw["product"]["sales_raw"] = "unavailable"
+        raw["product"]["interest_raw"] = "50+人想买"
+
+        data = normalize_collection(raw)
+
+        self.assertEqual("success", data["collection_status"])
+        self.assertEqual([], data["missing_fields"])
+        self.assertEqual("50+人想买", data["interest_raw"])
+        self.assertIn("sales_raw", data["optional_dynamic_missing_fields"])
+
+    def test_stable_monitor_field_missing_marks_snapshot_partial(self):
+        raw = complete_raw()
+        raw["assistant"]["month_sales_raw"] = "unavailable"
 
         data = normalize_collection(raw)
 
         self.assertEqual("partial", data["collection_status"])
-        self.assertEqual(["sales_raw"], data["missing_fields"])
+        self.assertEqual(["month_sales_raw"], data["missing_fields"])
 
-    def test_any_partial_monitor_snapshot_retries_once(self):
-        collector = PlaywrightCollector()
-        partial_data = normalize_collection({
-            **complete_raw(),
-            "product": {**complete_raw()["product"], "sales_raw": "unavailable"},
-        })
+    def test_rotating_samples_keep_both_sold_and_interest_values(self):
+        sold = complete_raw()
+        sold["product"]["sales_raw"] = "已售20+台"
+        sold["product"]["interest_raw"] = "unavailable"
+        sold["unavailable_reasons"] = {
+            "product.interest_raw": "销量/想买轮播位当前显示已售，当前帧未显示想买人数"
+        }
+
+        interest = complete_raw()
+        interest["product"]["sales_raw"] = "unavailable"
+        interest["product"]["interest_raw"] = "50+人想买"
+        interest["unavailable_reasons"] = {
+            "product.sales_raw": "销量/想买轮播位当前显示想买人数，当前帧未显示已售"
+        }
+
+        merged = merge_raw_samples([sold, interest])
+
+        self.assertEqual("已售20+台", merged["product"]["sales_raw"])
+        self.assertEqual("50+人想买", merged["product"]["interest_raw"])
+        self.assertNotIn("product.sales_raw", merged["unavailable_reasons"])
+        self.assertNotIn("product.interest_raw", merged["unavailable_reasons"])
+        self.assertEqual(
+            {"samples": 2, "sales_seen": True, "interest_seen": True},
+            merged["carousel_observations"],
+        )
+
+    def test_any_partial_stable_monitor_snapshot_retries_once(self):
+        raw = complete_raw()
+        raw["assistant"]["month_sales_raw"] = "unavailable"
+        partial_data = normalize_collection(raw)
         success_data = normalize_collection(complete_raw())
         partial = CollectionResult("partial", data=partial_data, recoverable=True)
         success = CollectionResult("success", data=success_data)
 
+        collector = PlaywrightCollector()
         with patch.object(collector, "_collect_once", side_effect=[partial, success]) as collect_once, \
              patch("services.competitor_monitor_collection.time.sleep") as sleep:
             result = collector.collect(URL)
@@ -61,9 +102,10 @@ class CompetitorCollectionPolicyTests(unittest.TestCase):
         self.assertEqual(2, collect_once.call_count)
         sleep.assert_called_once_with(2)
 
-    def test_success_with_auxiliary_gaps_does_not_retry(self):
+    def test_success_with_optional_dynamic_gap_does_not_retry(self):
         raw = complete_raw()
-        raw["assistant"]["listed_at"] = "unavailable"
+        raw["product"]["sales_raw"] = "unavailable"
+        raw["product"]["interest_raw"] = "10+人想买"
         data = normalize_collection(raw)
         result = CollectionResult("success", data=data, recoverable=False)
         collector = PlaywrightCollector()
