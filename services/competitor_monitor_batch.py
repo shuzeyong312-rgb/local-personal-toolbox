@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Iterator
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from contextlib import nullcontext
 
 from services.competitor_monitor import CollectionResult
 
@@ -23,53 +24,55 @@ def collect_batch(
     own thread and persist them serially, avoiding SQLite cross-thread access while still
     allowing the network/browser work to happen in parallel.
 
-    ``isolate_errors`` is used by the interactive worker so one unexpected page exception can
-    be shown as an item failure. Scheduled monitoring keeps it disabled to preserve the prior
-    fail-fast behavior for unexpected collector exceptions.
+    A collector may expose ``batch_context()`` for resources that must remain active for the
+    whole batch. The Playwright collector uses this to keep the dedicated Chrome minimized
+    even when CDP creates new tabs and Chrome tries to restore its window.
     """
     items = list(competitors)
     if not items:
         return
 
     worker_count = max(1, min(int(max_workers), MAX_PARALLEL_COLLECTIONS, len(items)))
-    executor = ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="1688-monitor")
-    futures: dict[Future, dict] = {}
+    batch_context = getattr(collector, "batch_context", None)
+    context = batch_context() if callable(batch_context) else nullcontext()
 
-    try:
-        for item in items:
-            if cancelled and cancelled():
-                break
-            futures[executor.submit(collector.collect, item["url"])] = item
+    with context:
+        executor = ThreadPoolExecutor(max_workers=worker_count, thread_name_prefix="1688-monitor")
+        futures: dict[Future, dict] = {}
 
-        for future in as_completed(futures):
-            if cancelled and cancelled():
-                _cancel_pending(futures)
-                break
+        try:
+            for item in items:
+                if cancelled and cancelled():
+                    break
+                futures[executor.submit(collector.collect, item["url"])] = item
 
-            item = futures[future]
-            if isolate_errors:
-                try:
+            for future in as_completed(futures):
+                if cancelled and cancelled():
+                    _cancel_pending(futures)
+                    break
+
+                item = futures[future]
+                if isolate_errors:
+                    try:
+                        result = future.result()
+                    except Exception as exc:
+                        result = CollectionResult(
+                            "failed",
+                            error="1688页面采集失败",
+                            technical_error=str(exc),
+                        )
+                else:
                     result = future.result()
-                except Exception as exc:
-                    result = CollectionResult(
-                        "failed",
-                        error="1688页面采集失败",
-                        technical_error=str(exc),
-                    )
-            else:
-                result = future.result()
 
-            yield item, result
+                yield item, result
 
-            if result.environment_error:
+                if result.environment_error:
+                    _cancel_pending(futures)
+                    break
+        finally:
+            if cancelled and cancelled():
                 _cancel_pending(futures)
-                break
-    finally:
-        if cancelled and cancelled():
-            _cancel_pending(futures)
-        # Running jobs cannot be force-killed safely; wait for at most the already-active pool
-        # to finish while cancelling every queued job.
-        executor.shutdown(wait=True, cancel_futures=True)
+            executor.shutdown(wait=True, cancel_futures=True)
 
 
 def _cancel_pending(futures: dict[Future, dict]) -> None:
