@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import ctypes
 import json
 import subprocess
@@ -17,11 +18,18 @@ from services.competitor_monitor import (
 )
 
 
+# A snapshot is usable for competitor monitoring when these stable page/assistant fields exist.
+# ``sales_raw`` is deliberately excluded: 1688 rotates “已售…” and “…人想买” through the
+# same hero slot, and some offers do not expose a cumulative sold count at all.
 MONITOR_FIELDS = (
     "price_raw_values",
-    "sales_raw",
     "visible_sku_names",
     "month_sales_raw",
+)
+
+OPTIONAL_DYNAMIC_FIELDS = (
+    "sales_raw",
+    "interest_raw",
 )
 
 AUXILIARY_FIELDS = (
@@ -39,6 +47,8 @@ BASIC_FIELDS = (
 
 SW_FORCEMINIMIZE = 11
 CREATE_NO_WINDOW = 0x08000000
+CAROUSEL_SAMPLE_COUNT = 4
+CAROUSEL_SAMPLE_INTERVAL_MS = 800
 
 
 def _monitor_chrome_pids(profile: Path) -> set[int]:
@@ -92,8 +102,6 @@ def _minimize_process_windows(pids: set[int]) -> int:
         process_id = wintypes.DWORD()
         user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
         if process_id.value in pids and user32.IsWindowVisible(hwnd):
-            # SW_FORCEMINIMIZE is more reliable than SW_MINIMIZE for another process and
-            # ShowWindowAsync avoids waiting on Chrome's UI thread.
             user32.ShowWindowAsync(hwnd, SW_FORCEMINIMIZE)
             minimized += 1
         return True
@@ -114,12 +122,7 @@ def minimize_monitor_chrome(profile: Path, retries: int = 8, delay: float = 0.25
 
 
 class MonitorChromeWindowGuard:
-    """Keep the dedicated Chrome minimized while CDP creates/navigates collection tabs.
-
-    Chrome may restore its window when a new tab/target is created, so minimizing only once
-    before the batch is insufficient. The guard re-applies minimization for the duration of
-    the batch and stops immediately afterwards so normal manual use is unaffected.
-    """
+    """Legacy minimize guard retained for compatibility with older callers/tests."""
 
     def __init__(self, profile: Path, *, interval: float = 0.2, refresh_pids_every: float = 2.0) -> None:
         self.profile = profile
@@ -168,7 +171,7 @@ class MonitorChromeWindowGuard:
 
 
 class BackgroundChromeEnvironment(ChromeEnvironment):
-    """Use the real dedicated Chrome session while keeping its window out of the way."""
+    """Legacy environment retained for compatibility; active runtime is in competitor_monitor_window."""
 
     def ensure(self, timeout: float = 15):
         result = super().ensure(timeout)
@@ -195,19 +198,131 @@ def _missing(data: dict, fields: tuple[str, ...]) -> list[str]:
     return [name for name in fields if data.get(name) in (None, [], "")]
 
 
+def _usable(value) -> bool:
+    return value not in (None, "", "unavailable", [], {})
+
+
+def _pick_first_available(samples: list[dict], section: str, field: str):
+    for sample in samples:
+        value = sample.get(section, {}).get(field)
+        if _usable(value):
+            return copy.deepcopy(value)
+    return None
+
+
+def merge_raw_samples(samples: list[dict]) -> dict:
+    """Merge several observations from one loaded offer page.
+
+    The main purpose is to observe 1688's rotating “已售/人想买” hero metric without forcing
+    the user to wait for one specific carousel frame. Stable fields also benefit from the merge:
+    if one observation briefly misses a late-rendered node, another observation can fill it.
+    """
+    if not samples:
+        return {}
+
+    merged = copy.deepcopy(samples[-1])
+    merged["assistant_detected"] = any(bool(item.get("assistant_detected")) for item in samples)
+    merged["product_detected"] = any(bool(item.get("product_detected")) for item in samples)
+
+    product_fields = (
+        "title", "price_raw_values", "price_tiers", "min_order_qty", "sales_raw", "interest_raw",
+    )
+    product = merged.setdefault("product", {})
+    for field in product_fields:
+        value = _pick_first_available(samples, "product", field)
+        if value is not None:
+            product[field] = value
+
+    assistant = merged.setdefault("assistant", {})
+    assistant_fields = (
+        "listed_at", "month_sales_raw", "month_distribution_raw", "year_sales_quantity_raw",
+        "year_sales_orders_raw", "review_count_raw", "positive_rate_raw", "stock_rate_raw",
+    )
+    for field in assistant_fields:
+        value = _pick_first_available(samples, "assistant", field)
+        if value is not None:
+            assistant[field] = value
+
+    metadata = merged.setdefault("page_metadata", {})
+    for field in ("merchant_raw", "category_raw"):
+        value = _pick_first_available(samples, "page_metadata", field)
+        if value is not None:
+            metadata[field] = value
+
+    # Prefer the SKU observation that exposes the most usable names.
+    def sku_score(sample: dict) -> tuple[int, int]:
+        skus = sample.get("skus") or []
+        names = [sku.get("name") for sku in skus if _usable(sku.get("name"))]
+        return len(names), len(skus)
+
+    best_sku_sample = max(samples, key=sku_score)
+    if best_sku_sample.get("skus"):
+        merged["skus"] = copy.deepcopy(best_sku_sample["skus"])
+
+    login_evidence = []
+    for sample in samples:
+        for item in sample.get("login_evidence_raw") or []:
+            if item not in login_evidence:
+                login_evidence.append(item)
+    merged["login_evidence_raw"] = login_evidence
+
+    reasons = {}
+    for sample in samples:
+        reasons.update(sample.get("unavailable_reasons") or {})
+
+    resolved_keys = []
+    field_map = {
+        "product.title": product.get("title"),
+        "product.price_raw_values": product.get("price_raw_values"),
+        "product.min_order_qty": product.get("min_order_qty"),
+        "product.sales_raw": product.get("sales_raw"),
+        "product.interest_raw": product.get("interest_raw"),
+        "assistant.listed_at": assistant.get("listed_at"),
+        "assistant.month_sales_raw": assistant.get("month_sales_raw"),
+        "assistant.month_distribution_raw": assistant.get("month_distribution_raw"),
+        "assistant.year_sales_quantity_raw": assistant.get("year_sales_quantity_raw"),
+        "assistant.year_sales_orders_raw": assistant.get("year_sales_orders_raw"),
+        "assistant.review_count_raw": assistant.get("review_count_raw"),
+        "assistant.positive_rate_raw": assistant.get("positive_rate_raw"),
+    }
+    for key, value in field_map.items():
+        if _usable(value):
+            resolved_keys.append(key)
+    for key in resolved_keys:
+        reasons.pop(key, None)
+
+    merged["unavailable_reasons"] = reasons
+    merged["unavailable_fields"] = sorted(reasons)
+    merged["carousel_observations"] = {
+        "samples": len(samples),
+        "sales_seen": _usable(product.get("sales_raw")),
+        "interest_seen": _usable(product.get("interest_raw")),
+    }
+    return merged
+
+
 def normalize_collection(raw: dict) -> dict:
-    """Classify collection health by monitor-critical fields only."""
+    """Classify collection health by stable monitor-critical fields only."""
     data = _legacy_normalize_collection(raw)
+    product = raw.get("product", {})
+    interest = product.get("interest_raw")
+    data["interest_raw"] = None if interest in (None, "", "unavailable") else interest
+
     core_missing = _missing(data, MONITOR_FIELDS)
     data["collection_status"] = "partial" if core_missing else "success"
     data["missing_fields"] = core_missing
     data["basic_missing_fields"] = _missing(data, BASIC_FIELDS)
     data["auxiliary_missing_fields"] = _missing(data, AUXILIARY_FIELDS)
+    data["optional_dynamic_missing_fields"] = _missing(data, OPTIONAL_DYNAMIC_FIELDS)
+    data["collection_diagnostics"] = {
+        "unavailable_reasons": raw.get("unavailable_reasons", {}),
+        "carousel_observations": raw.get("carousel_observations", {}),
+    }
     return data
 
 
 class PlaywrightCollector:
-    """1688 collector that waits for useful page structure and retries core-field gaps once."""
+    """1688 collector that waits for stable fields and samples rotating hero metrics."""
 
     def __init__(self, cdp_url: str = "http://127.0.0.1:9222", extractor: Path | None = None) -> None:
         self.cdp_url = cdp_url
@@ -257,7 +372,13 @@ class PlaywrightCollector:
                     except PlaywrightTimeoutError:
                         pass
 
-                    raw = page.evaluate(self.extractor.read_text(encoding="utf-8"))
+                    extractor = self.extractor.read_text(encoding="utf-8")
+                    samples = []
+                    for sample_index in range(CAROUSEL_SAMPLE_COUNT):
+                        samples.append(page.evaluate(extractor))
+                        if sample_index + 1 < CAROUSEL_SAMPLE_COUNT:
+                            page.wait_for_timeout(CAROUSEL_SAMPLE_INTERVAL_MS)
+                    raw = merge_raw_samples(samples)
                     final_url = page.url
                 finally:
                     page.close()
