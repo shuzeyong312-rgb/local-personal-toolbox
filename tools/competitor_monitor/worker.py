@@ -1,6 +1,7 @@
 from PySide6.QtCore import QThread, Signal
 
-from services.competitor_monitor import ChromeEnvironment, PlaywrightCollector
+from services.competitor_monitor import ChromeEnvironment
+from services.competitor_monitor_collection import PlaywrightCollector
 
 
 class CollectionWorker(QThread):
