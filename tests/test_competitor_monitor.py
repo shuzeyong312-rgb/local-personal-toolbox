@@ -64,6 +64,19 @@ class CompetitorMonitorTests(unittest.TestCase):
         self.assertEqual((0, "lt"), parse_metric("<10"))
         self.assertEqual((12000, "gte"), parse_metric("已售1.2万+件"))
 
+    def test_optional_unavailable_values_become_null(self):
+        raw = complete_raw()
+        raw["skus"][0].update({
+            "specification_raw": "unavailable", "price_raw": "unavailable",
+            "availability": "unavailable", "stock_raw": "unavailable",
+        })
+        data = normalize_collection(raw)
+        self.assertEqual("success", data["collection_status"])
+        self.assertEqual((None, None, None, None), (
+            data["selected_sku_name"], data["selected_sku_price_raw"],
+            data["selected_sku_availability"], data["selected_sku_stock_raw"],
+        ))
+
     def test_failed_collection_keeps_existing_snapshot(self):
         competitor_id, _ = self.store.add_competitor("https://detail.1688.com/offer/976443859503.html")
         data = normalize_collection(complete_raw())

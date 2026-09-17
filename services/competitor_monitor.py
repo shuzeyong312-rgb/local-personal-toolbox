@@ -34,6 +34,9 @@ def normalize_collection(raw: dict) -> dict:
         item = product.get(name, assistant.get(name))
         return None if item in (None, "unavailable") else item
 
+    def optional(item):
+        return None if item in (None, "unavailable") else item
+
     selected = next((sku for sku in skus if sku.get("selected")), {})
     result = {
         "title": value("title"),
@@ -47,10 +50,10 @@ def normalize_collection(raw: dict) -> dict:
         "month_distribution_raw": value("month_distribution_raw"),
         "year_sales_quantity_raw": value("year_sales_quantity_raw"),
         "year_sales_orders_raw": value("year_sales_orders_raw"),
-        "selected_sku_name": selected.get("selected_sku_name") or selected.get("specification_raw"),
-        "selected_sku_price_raw": selected.get("selected_sku_price_raw") or selected.get("price_raw"),
-        "selected_sku_availability": selected.get("selected_sku_availability") or selected.get("availability"),
-        "selected_sku_stock_raw": selected.get("selected_sku_stock_raw") or selected.get("stock_raw"),
+        "selected_sku_name": optional(selected.get("selected_sku_name") or selected.get("specification_raw")),
+        "selected_sku_price_raw": optional(selected.get("selected_sku_price_raw") or selected.get("price_raw")),
+        "selected_sku_availability": optional(selected.get("selected_sku_availability") or selected.get("availability")),
+        "selected_sku_stock_raw": optional(selected.get("selected_sku_stock_raw") or selected.get("stock_raw")),
         "review_count_raw": value("review_count_raw"),
         "positive_rate_raw": value("positive_rate_raw"),
     }
@@ -216,7 +219,7 @@ class MonitorStore:
 
     def latest_snapshot(self, competitor_id: int) -> sqlite3.Row | None:
         return self.db.execute(
-            "SELECT * FROM snapshots WHERE competitor_id=? ORDER BY collected_at DESC LIMIT 1", (competitor_id,)
+            "SELECT * FROM snapshots WHERE competitor_id=? ORDER BY collected_at DESC, id DESC LIMIT 1", (competitor_id,)
         ).fetchone()
 
     def latest_failure(self, competitor_id: int) -> str | None:
@@ -285,7 +288,7 @@ class PlaywrightCollector:
 
     def collect(self, url: str) -> CollectionResult:
         try:
-            from playwright.sync_api import sync_playwright
+            from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, sync_playwright
             with sync_playwright() as pw:
                 browser = pw.chromium.connect_over_cdp(self.cdp_url, timeout=5000)
                 if not browser.contexts:
@@ -293,15 +296,20 @@ class PlaywrightCollector:
                 page = browser.contexts[0].new_page()
                 try:
                     page.goto(url, wait_until="domcontentloaded", timeout=30000)
-                    page.wait_for_function(
-                        "() => document.querySelector('.title-content h1') && document.body.innerText.includes('年成交')",
-                        timeout=15000,
-                    )
+                    try:
+                        page.wait_for_function(
+                            "() => document.querySelector('.title-content h1') && document.body.innerText.includes('年成交')",
+                            timeout=15000,
+                        )
+                    except PlaywrightTimeoutError:
+                        pass
                     raw = page.evaluate(self.extractor.read_text(encoding="utf-8"))
                 finally:
                     page.close()
-            if not raw.get("assistant_detected") or not raw.get("product_detected"):
-                return CollectionResult("failed", error="商品区或官方采购助手未正常显示")
+            if not raw.get("product_detected"):
+                return CollectionResult("failed", error="1688商品区未正常显示")
+            if not raw.get("assistant_detected"):
+                return CollectionResult("failed", error="1688官方采购助手未出现")
             data = normalize_collection(raw)
             return CollectionResult(data["collection_status"], data=data)
         except Exception as exc:
