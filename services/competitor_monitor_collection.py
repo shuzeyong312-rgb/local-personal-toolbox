@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from services.competitor_monitor import CollectionResult, normalize_collection as _legacy_normalize_collection
+from services.competitor_monitor import (
+    ChromeEnvironment,
+    CollectionResult,
+    normalize_collection as _legacy_normalize_collection,
+)
 
 
 MONITOR_FIELDS = (
@@ -27,6 +32,28 @@ AUXILIARY_FIELDS = (
 BASIC_FIELDS = (
     "min_order_qty",
 )
+
+
+class BackgroundChromeEnvironment(ChromeEnvironment):
+    """Start the dedicated monitor Chrome minimized for unattended collection.
+
+    Manual recovery still uses the base ``open_browser`` behavior, so login problems can be
+    handled in a visible browser when the user explicitly asks to open it.
+    """
+
+    def _start_chrome(self, url: str | None = None) -> None:
+        if url:
+            super()._start_chrome(url)
+            return
+        chrome = self._chrome_path()
+        subprocess.Popen([
+            str(chrome),
+            "--remote-debugging-port=9222",
+            f"--user-data-dir={self.PROFILE}",
+            "--start-minimized",
+            "--no-first-run",
+            "--no-default-browser-check",
+        ])
 
 
 def _missing(data: dict, fields: tuple[str, ...]) -> list[str]:
