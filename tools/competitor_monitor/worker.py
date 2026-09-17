@@ -1,7 +1,7 @@
 from PySide6.QtCore import QThread, Signal
 
 from services.competitor_monitor_batch import MAX_PARALLEL_COLLECTIONS, collect_batch
-from services.competitor_monitor_collection import BackgroundChromeEnvironment, PlaywrightCollector
+from services.competitor_monitor_collection import BackgroundChromeEnvironment as ChromeEnvironment, PlaywrightCollector
 
 
 class CollectionWorker(QThread):
@@ -22,7 +22,7 @@ class CollectionWorker(QThread):
 
     def run(self) -> None:
         self.state.emit("正在准备环境")
-        environment = BackgroundChromeEnvironment(self.cdp_url)
+        environment = ChromeEnvironment(self.cdp_url)
         if not environment.is_ready():
             self.state.emit("正在后台启动浏览器")
         ready = environment.ensure()
