@@ -44,7 +44,9 @@
   const minimums=[...new Set(priceComponents.flatMap(e=>
     Array.from(text(e).matchAll(/\d+\s*(?:件|台|个|套|只|盒|箱|包|支|条|瓶|枚|对|本)\s*起批/g),m=>m[0])))];
   const sales=[...new Set((productScope ? Array.from(productScope.querySelectorAll('*')).filter(visible) : [])
-    .map(text).filter(t=>/^已售[\d.+万千]+[^\s]*$/.test(t)))];
+    .map(text)
+    .map(t=>t.replace(/\s+/g,''))
+    .filter(t=>/^已售(?:<|＜)?\d+(?:\.\d+)?(?:万|千)?\+?(?:件|台|个|套|只|盒|箱|包|支|条|瓶|枚|对|本)?$/.test(t)))];
   product.min_order_qty=minimums.length===1?minimums[0]:missing('product.min_order_qty','目标商品区域未找到唯一起批量');
   product.sales_raw=sales.length===1?sales[0]:missing('product.sales_raw','目标商品区域未找到唯一已售计数');
   const group=productScope ? Array.from(productScope.querySelectorAll('h3')).find(e=>text(e)==='颜色')?.closest('.feature-item') : null;
