@@ -6,26 +6,20 @@ QWidget#dashboardPage, QScrollArea#dashboardScroll, QScrollArea#dashboardScroll 
 QWidget#dashboardContent, QWidget#dashboardGridHost { background: transparent; border: 0; }
 QWidget#sidebar { background: rgba(255,255,255,174); border: 0; border-right: 1px solid rgba(224,232,244,145); }
 QWidget#brandBox { background: transparent; }
-QLabel#brand { color: #182033; font-size: 14px; font-weight: 700; }
-QLabel#brandHint { color: #9AA6B8; font-size: 9px; font-weight: 500; }
-QListWidget#navigation { background: transparent; color: #71809C; border: 0; outline: 0; padding: 0 2px; }
+QLabel#brand { color: #182033; font-size: 15px; font-weight: 700; }
+QLabel#brandHint { color: #9AA6B8; font-size: 10px; font-weight: 500; }
+QListWidget#navigation { background: transparent; color: #71809C; border: 0; outline: 0; padding: 0 2px; font-size: 13px; }
 QListWidget#navigation::item { min-height: 39px; padding: 0 10px; margin: 2px 0; border-radius: 12px; }
 QListWidget#navigation::item:hover { background: rgba(242,246,252,165); color: #334155; }
 QListWidget#navigation::item:selected { background: rgba(231,239,253,205); color: #2C66DA; font-weight: 600; }
 QWidget#sidebarSection { background: transparent; }
 QLabel#sidebarSectionLabel { color: #A1ADBE; font-size: 10px; font-weight: 600; }
 QLabel#sidebarSectionCount { color: #BBC4D1; font-size: 9px; }
-QFrame#privacyCard { background: rgba(255,255,255,142); border: 1px solid rgba(255,255,255,205); border-radius: 16px; }
-QLabel#privacyIcon { color: #2F72E8; background: rgba(226,237,255,205); border-radius: 9px; min-width: 30px; max-width: 30px; min-height: 30px; max-height: 30px; font-size: 12px; }
-QLabel#privacyTitle { color: #3B4960; font-size: 11px; font-weight: 600; }
-QLabel#privacyHint { color: #9FAABB; font-size: 9px; }
-QLabel#privacyArrow { color: #B3BDCA; font-size: 12px; }
 QLabel#sidebarVersion { color: #B5BFCD; font-size: 9px; padding-top: 8px; }
 QWidget#titleBar { background: transparent; border: 0; min-height: 78px; max-height: 78px; }
-QFrame#globalSearchShell { background: rgba(255,255,255,210); border: 1px solid rgba(255,255,255,238); border-radius: 25px; min-height: 50px; max-height: 50px; min-width: 420px; max-width: 700px; }
-QLineEdit#globalSearch { background: transparent; border: 0; min-height: 46px; padding: 0; color: #26334A; font-size: 12px; selection-background-color: #DDE9FF; selection-color: #204FAD; }
+QFrame#globalSearchShell { background: rgba(255,255,255,222); border: 1px solid rgba(255,255,255,245); border-radius: 25px; min-height: 50px; max-height: 50px; min-width: 420px; max-width: 700px; }
+QLineEdit#globalSearch { background: transparent; border: 0; min-height: 46px; padding: 0; color: #26334A; font-size: 13px; selection-background-color: #DDE9FF; selection-color: #204FAD; }
 QLineEdit#globalSearch:hover, QLineEdit#globalSearch:focus { background: transparent; border: 0; }
-QLabel#searchShortcutBadge { color: #929DAE; background: rgba(247,249,253,180); border: 1px solid rgba(225,231,240,165); border-radius: 8px; padding: 4px 7px; font-size: 9px; font-weight: 600; }
 QPushButton#headerAction { min-width: 36px; max-width: 36px; min-height: 36px; max-height: 36px; padding: 0; border-radius: 18px; background: rgba(255,255,255,150); border: 1px solid rgba(255,255,255,205); }
 QPushButton#headerAction:hover { background: rgba(255,255,255,220); border-color: rgba(203,215,233,190); }
 QPushButton#headerAction:disabled { background: rgba(255,255,255,112); border-color: rgba(255,255,255,165); }
@@ -36,8 +30,8 @@ QLabel#headerTitle { color: #182033; font-size: 14px; font-weight: 700; }
 QLabel#headerDescription { color: #71809C; font-size: 10px; }
 QPushButton#windowButton, QPushButton#closeButton { min-width: 42px; max-width: 42px; min-height: 50px; max-height: 50px; background: transparent; border: 0; }
 QPushButton#windowButton:hover { background: rgba(236,241,248,155); }
-QLabel#dashboardTitle { color: #182033; font-size: 31px; font-weight: 700; }
-QLabel#dashboardSubtitle { color: #71809C; font-size: 12px; }
+QLabel#dashboardTitle { color: #182033; font-size: 33px; font-weight: 800; }
+QLabel#dashboardSubtitle { color: #66758D; font-size: 13px; }
 QLabel#toolCount { color: #A0ACBD; background: transparent; font-size: 10px; }
 QPushButton#filterChip { min-height: 33px; padding: 0 15px; border-radius: 16px; border: 1px solid rgba(211,221,235,170); background: rgba(255,255,255,145); color: #758398; font-size: 10px; font-weight: 600; }
 QPushButton#filterChip:hover { background: rgba(255,255,255,205); border-color: #C7D5E8; color: #40516A; }
@@ -46,11 +40,11 @@ QLabel#dashboardEmpty { color: #71809C; background: rgba(255,255,255,150); borde
 QToolButton#toolCard { background: rgba(255,255,255,216); border: 1px solid rgba(255,255,255,238); border-radius: 19px; text-align: left; padding: 0; }
 QToolButton#toolCard:hover { background: rgba(255,255,255,232); border-color: rgba(196,211,232,205); }
 QToolButton#toolCard:focus { border: 1px solid #7EA5F6; }
-QLabel#toolCardCategory { color: #9AA6BA; font-size: 10px; font-weight: 600; background: transparent; }
+QLabel#toolCardCategory { color: #8E9BB0; font-size: 11px; font-weight: 600; background: transparent; }
 QLabel#featuredBadge { color: #3568F4; background: rgba(231,239,255,220); border-radius: 7px; padding: 2px 6px; font-size: 8px; font-weight: 700; }
 QLabel#toolCardArrow { color: #A7B1C0; font-size: 14px; background: transparent; }
-QLabel#toolCardTitle { color: #182033; font-size: 15px; font-weight: 700; background: transparent; }
-QLabel#toolCardDescription { color: #738197; font-size: 10px; background: transparent; }
+QLabel#toolCardTitle { color: #182033; font-size: 16px; font-weight: 700; background: transparent; }
+QLabel#toolCardDescription { color: #66758D; font-size: 11px; background: transparent; }
 QWidget#toolPreviewCanvas { background: transparent; }
 QFrame#floatingDock { background: rgba(255,255,255,178); border: 1px solid rgba(255,255,255,220); border-radius: 22px; min-height: 54px; max-height: 54px; }
 QToolButton#dockButton { background: rgba(247,249,253,145); border: 1px solid rgba(226,232,241,125); border-radius: 11px; padding: 0; }

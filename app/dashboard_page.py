@@ -21,7 +21,7 @@ class DashboardPage(QWidget):
         self._open_tool = open_tool
         self._query = ""
         self._sort_key = "popular"
-        self._columns = 3
+        self._columns = 2
         self._settings = QSettings("Personal Toolbox", "Personal Toolbox")
         self.cards = {tool.id: ToolCard(tool) for tool in TOOL_REGISTRY}
         for tool_id, card in self.cards.items():
@@ -150,11 +150,3 @@ class DashboardPage(QWidget):
         self.tool_count.setText(f"显示 {len(tools)} / {len(TOOL_REGISTRY)}")
         self.empty.setVisible(not tools)
         self.grid_host.setVisible(bool(tools))
-
-    def resizeEvent(self, event) -> None:
-        super().resizeEvent(event)
-        available = self._scroll.viewport().width() if hasattr(self, "_scroll") else self.width()
-        columns = 3 if available >= 900 else 2
-        if columns != self._columns:
-            self._columns = columns
-            self._refresh_grid()

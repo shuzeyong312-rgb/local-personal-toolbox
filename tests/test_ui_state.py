@@ -203,6 +203,7 @@ class UiStateTests(unittest.TestCase):
         self.app.processEvents()
         self.assertIs(window.pages.currentWidget(), window.dashboard_page)
         self.assertTrue(window.dock.isVisible())
+        self.assertEqual(2, window.dashboard_page._columns)
         window.close()
     def test_main_window_uses_frameless_custom_title_bar(self) -> None:
         window = MainWindow()

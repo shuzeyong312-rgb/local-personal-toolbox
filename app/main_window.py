@@ -117,20 +117,6 @@ class MainWindow(QMainWindow):
         self.navigation.currentItemChanged.connect(lambda current, _previous: self._activate_navigation(current))
         column.addWidget(self.navigation, 1)
 
-        privacy = QFrame(objectName="privacyCard")
-        privacy_layout = QHBoxLayout(privacy)
-        privacy_layout.setContentsMargins(11, 11, 10, 11)
-        privacy_layout.setSpacing(9)
-        privacy_icon = QLabel("●", objectName="privacyIcon")
-        privacy_icon.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        privacy_layout.addWidget(privacy_icon)
-        copy = QVBoxLayout()
-        copy.setSpacing(1)
-        copy.addWidget(QLabel("本地处理", objectName="privacyTitle"))
-        copy.addWidget(QLabel("数据不会离开设备", objectName="privacyHint"))
-        privacy_layout.addLayout(copy, 1)
-        privacy_layout.addWidget(QLabel("→", objectName="privacyArrow"))
-        column.addWidget(privacy)
         column.addWidget(QLabel("Personal Toolbox", objectName="sidebarVersion"), 0, Qt.AlignmentFlag.AlignHCenter)
         return sidebar
 

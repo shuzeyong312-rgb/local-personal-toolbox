@@ -1,6 +1,6 @@
 from PySide6.QtCore import QSize, Qt, Signal
-from PySide6.QtGui import QKeySequence, QShortcut
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QFrame, QGraphicsDropShadowEffect, QHBoxLayout, QLabel, QLineEdit, QPushButton, QVBoxLayout, QWidget
 
 from app.icons import icon
 from app.tool_registry import ToolDefinition
@@ -37,6 +37,11 @@ class TitleBar(QWidget):
         layout.addWidget(self.detail_titles)
 
         self.search_shell = QFrame(objectName="globalSearchShell")
+        search_shadow = QGraphicsDropShadowEffect(self.search_shell)
+        search_shadow.setBlurRadius(16)
+        search_shadow.setOffset(0, 2)
+        search_shadow.setColor(QColor(54, 82, 135, 24))
+        self.search_shell.setGraphicsEffect(search_shadow)
         search_layout = QHBoxLayout(self.search_shell)
         search_layout.setContentsMargins(16, 0, 12, 0)
         search_layout.setSpacing(9)
@@ -48,8 +53,6 @@ class TitleBar(QWidget):
         self.search.setClearButtonEnabled(True)
         self.search.textChanged.connect(self.searchChanged)
         search_layout.addWidget(self.search, 1)
-        self.shortcut_badge = QLabel("Ctrl K", objectName="searchShortcutBadge")
-        search_layout.addWidget(self.shortcut_badge)
         layout.addWidget(self.search_shell, 1)
 
         for name, tooltip in (("sun", "外观设置（即将提供）"), ("bell", "通知（即将提供）")):
@@ -84,15 +87,7 @@ class TitleBar(QWidget):
         layout.addWidget(self.maximize)
         layout.addWidget(close)
 
-        self.search_shortcut = QShortcut(QKeySequence("Ctrl+K"), window)
-        self.search_shortcut.activated.connect(self.focus_search)
         self.show_dashboard()
-
-    def focus_search(self) -> None:
-        if not self.search_shell.isVisible():
-            self.backRequested.emit()
-        self.search.setFocus(Qt.FocusReason.ShortcutFocusReason)
-        self.search.selectAll()
 
     def show_dashboard(self) -> None:
         self.back.hide()
